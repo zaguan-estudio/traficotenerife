@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cámaras de tráfico en tiempo real de la isla de Tenerife. TF-5, TF-1, TF-13, TF-2, Noreste y Santa Cruz." />
+  <meta name="theme-color" content="#0d0d0d" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Tráfico Tenerife – Cámaras en Directo" />
+  <meta property="og:description" content="Estado del tráfico en tiempo real en Tenerife. Imágenes de todas las cámaras de la isla." />
+  <meta property="og:type" content="website" />
+
+  <title>Tráfico Tenerife · Cámaras en Directo</title>
+
+  <!-- Favicon SVG inline -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📷</text></svg>" />
+  <!-- PWA manifest -->
+  <link rel="manifest" href="manifest.json" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ═══════ HEADER ═══════ -->
+  <header class="site-header" role="banner">
+    <!-- Use logo image if available; falls back to text -->
+    <a href="index.html" aria-label="Tráfico Tenerife – Inicio" style="display:block;">
+      <img
+        src="img/logo.svg"
+        alt="Tráfico Tenerife · Información del Estado del Tráfico"
+        class="header-logo"
+        onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex';"
+      />
+      <span id="logo-fallback" style="display:none; align-items:center; gap:14px; padding:12px 16px;" class="header-logo-fallback">
+        <span class="logo-icon" aria-hidden="true">🏠</span>
+        <span class="logo-text">
+          <span class="logo-title">Tráfico Tenerife</span>
+          <span class="logo-subtitle">Información del Estado del Tráfico</span>
+        </span>
+      </span>
+    </a>
+  </header>
+
+  <!-- ═══════ TOP BAR ═══════ -->
+  <div class="top-bar" role="contentinfo">
+    <span>
+      Fuente:
+      <a href="https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html"
+         target="_blank" rel="noopener">
+        CIC Tenerife – Cabildo Insular
+      </a>
+    </span>
+    <span class="status-indicator">
+      <span class="status-dot" id="status-dot" title="Estado del sistema"></span>
+      En directo ·
+      <span id="current-time">--:--:--</span>
+    </span>
+  </div>
+
+  <!-- ═══════ NAVIGATION ═══════ -->
+  <nav class="main-nav" aria-label="Secciones de cámaras">
+    <ul class="nav-list" id="nav-list" role="list">
+      <li>
+        <a href="#sec-tf5" aria-label="TF-5 – Autopista del Norte">
+          TF-5
+          <span class="nav-badge" id="badge-tf5"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#sec-tf1" aria-label="TF-1 – Autopista del Sur">
+          TF-1
+          <span class="nav-badge" id="badge-tf1"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#sec-tf13" aria-label="TF-13 – Vía de Circunvalación">
+          TF-13
+          <span class="nav-badge" id="badge-tf13"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#sec-tf2" aria-label="TF-2 – Autovía Metropolitana">
+          TF-2
+          <span class="nav-badge" id="badge-tf2"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#sec-noreste" aria-label="Noreste de la isla">
+          Noreste
+          <span class="nav-badge" id="badge-noreste"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#sec-staCruz" aria-label="Santa Cruz de Tenerife">
+          Sta. Cruz
+          <span class="nav-badge" id="badge-staCruz"></span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- ═══════ MAIN CONTENT ═══════ -->
+  <main id="main-content" class="main-content" role="main" aria-label="Cámaras de tráfico">
+    <!-- Rendered by JavaScript -->
+    <noscript>
+      <p style="color:#aaa; padding:24px; text-align:center;">
+        Esta aplicación requiere JavaScript para mostrar las cámaras de tráfico.
+      </p>
+    </noscript>
+  </main>
+
+  <!-- ═══════ MODAL / LIGHTBOX ═══════ -->
+  <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title">Cámara</span>
+        <button class="modal-close" id="modal-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <img class="modal-img" id="modal-img" src="" alt="Vista ampliada de cámara de tráfico" />
+      </div>
+      <div class="modal-footer">
+        <span class="modal-source">
+          Fuente:
+          <a id="modal-source-link" href="#" target="_blank" rel="noopener">CIC Tenerife</a>
+        </span>
+        <button class="modal-refresh-btn" id="modal-refresh-btn">↺ Actualizar imagen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ BACK TO TOP ═══════ -->
+  <button class="back-to-top" id="back-to-top" aria-label="Volver al inicio">▲</button>
+
+  <!-- ═══════ FOOTER ═══════ -->
+  <footer class="site-footer" role="contentinfo">
+    <p>
+      Imágenes proporcionadas por el
+      <a href="https://cic.tenerife.es" target="_blank" rel="noopener">
+        Centro de Información de Carreteras (CIC)
+      </a>
+      · Área de Carreteras · Cabildo Insular de Tenerife
+    </p>
+    <p style="margin-top:6px;">
+      Las imágenes se actualizan automáticamente cada 30 segundos.
+      Pueden existir desfases temporales respecto a la situación real.
+    </p>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="js/cameras.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
