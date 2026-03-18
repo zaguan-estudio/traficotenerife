@@ -1,95 +1,87 @@
 /**
  * Tráfico Tenerife – Camera Data & URL Builder
  *
- * Camera images are sourced from the official CIC Tenerife server:
- * https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html
+ * Imágenes obtenidas de la fuente oficial del CIC Tenerife:
+ *   https://cic.tenerife.es/e-Traffic3/data/camara-2701001-{N}.jpg
  *
- * The app will attempt to discover live camera image URLs automatically
- * by parsing the CIC page. The static entries below serve as the
- * authoritative list of camera names and groupings, with multiple
- * candidate URL patterns that are tried in order.
+ * El parámetro ?t= se añade para evitar caché del navegador.
  *
- * HOW TO UPDATE CAMERA IDs:
- * 1. Open https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html in a browser
- * 2. Open DevTools → Network → filter by "img" or ".jpg"
- * 3. Copy the image URL patterns and update the `ids` array for each camera
+ * CÓMO ACTUALIZAR LOS IDs:
+ *   1. Abre https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html
+ *   2. F12 → Red → filtra por "jpg"
+ *   3. Recarga y copia los números finales de cada URL (ej: camara-2701001-26 → num: 26)
+ *   4. Actualiza el campo `num` de cada cámara en CAMERA_GROUPS
+ *   5. O usa el Modo Escáner integrado (botón "🔍 Explorar IDs") para descubrirlos
  */
 
-const CIC_BASE = 'https://cic.tenerife.es/web3/mosaico_cctv/';
-
-// Candidate URL builders tried in sequence until image loads
-const URL_BUILDERS = [
-  id => `${CIC_BASE}${id}.jpg`,
-  id => `${CIC_BASE}images/${id}.jpg`,
-  id => `${CIC_BASE}cam/${id}.jpg`,
-  id => `${CIC_BASE}${id}.jpeg`,
-  id => `${CIC_BASE}webcam.php?cam=${id}`,
-  id => `${CIC_BASE}imagen.php?id=${id}`,
-];
+const CIC_BASE   = 'https://cic.tenerife.es/e-Traffic3/data/';
+const CAM_SERIES = '2701001';  // Prefijo fijo de la serie de cámaras
 
 /**
- * Returns the primary candidate URL for a camera ID.
- * A cache-busting timestamp is appended.
+ * Construye la URL de imagen de una cámara con cache-busting.
+ * @param {number|string} camNum  Número secuencial de cámara (ej: 26)
  */
-function getCameraUrl(camId, urlIndex = 0) {
-  const builder = URL_BUILDERS[urlIndex % URL_BUILDERS.length];
-  const base = builder(camId);
-  return `${base}${base.includes('?') ? '&' : '?'}t=${Date.now()}`;
+function getCameraUrl(camNum) {
+  return `${CIC_BASE}camara-${CAM_SERIES}-${camNum}.jpg?t=${Date.now()}`;
 }
 
 /* ──────────────────────────────────────────────────────────
-   CAMERA GROUPS
-   Cameras are grouped by road, matching the structure of
+   GRUPOS DE CÁMARAS
+   Agrupadas por carretera, equivalente a la estructura de
    http://www.traficotenerife.com/index_cams.html
 
-   Each camera entry has:
-   - id:   Identifier used to build the image URL (update to match CIC)
-   - name: Human-readable display name
+   Cada cámara tiene:
+     - num:  Número secuencial del sistema CIC (parte final de la URL)
+     - name: Nombre descriptivo de la ubicación
+
+   NOTA: Los `num` están asignados de forma secuencial aproximada
+   basándose en las cámaras confirmadas (26 y 27 en rango TF-1).
+   Usa el Modo Escáner para confirmar cuáles IDs tienen imagen activa.
 ──────────────────────────────────────────────────────────── */
 const CAMERA_GROUPS = [
   {
     id:       'tf5',
     name:     'Cámaras de TF-5',
     subtitle: 'Autopista del Norte · Santa Cruz ↔ Puerto de la Cruz',
-    icon:     '🛣️',
+    icon:     '🛣',
     cameras: [
-      { id: 'tf5_entr_tun',       name: 'Entrada Túnel 3 de Mayo'    },
-      { id: 'tf5_tun3mayo',       name: 'Túnel 3 de Mayo'            },
-      { id: 'tf5_3mayo',          name: 'TF-5 · 3 de Mayo'           },
-      { id: 'tf5_sal_tun',        name: 'Salida Túnel 3 de Mayo'     },
-      { id: 'tf5_somosierra',     name: 'TF-5 · Somosierra'          },
-      { id: 'tf5_residencia',     name: 'TF-5 · Residencia'          },
-      { id: 'tf5_taco',           name: 'TF-5 · Taco'                },
-      { id: 'tf5_chumberas',      name: 'TF-5 · Chumberas'           },
-      { id: 'tf5_guajara',        name: 'TF-5 · Guajara'             },
-      { id: 'tf5_padre_anchieta', name: 'TF-5 · Padre Anchieta'      },
-      { id: 'tf5_san_benito',     name: 'TF-5 · San Benito'          },
-      { id: 'tf5_los_rodeos',     name: 'TF-5 · Los Rodeos'          },
-      { id: 'tf5_tacoronte',      name: 'TF-5 · Tacoronte'           },
-      { id: 'tf5_sta_ursula',     name: 'TF-5 · Sta. Úrsula'         },
-      { id: 'tf5_pto_la_cruz',    name: 'TF-5 · Puerto de la Cruz'   },
+      { num:  1, name: 'Entrada Túnel 3 de Mayo'  },
+      { num:  2, name: 'Túnel 3 de Mayo'          },
+      { num:  3, name: 'TF-5 · 3 de Mayo'         },
+      { num:  4, name: 'Salida Túnel 3 de Mayo'   },
+      { num:  5, name: 'TF-5 · Somosierra'        },
+      { num:  6, name: 'TF-5 · Residencia'        },
+      { num:  7, name: 'TF-5 · Taco'              },
+      { num:  8, name: 'TF-5 · Chumberas'         },
+      { num:  9, name: 'TF-5 · Guajara'           },
+      { num: 10, name: 'TF-5 · Padre Anchieta'    },
+      { num: 11, name: 'TF-5 · San Benito'        },
+      { num: 12, name: 'TF-5 · Los Rodeos'        },
+      { num: 13, name: 'TF-5 · Tacoronte'         },
+      { num: 14, name: 'TF-5 · Sta. Úrsula'       },
+      { num: 15, name: 'TF-5 · Puerto de la Cruz' },
     ]
   },
   {
     id:       'tf1',
     name:     'Cámaras de TF-1',
     subtitle: 'Autopista del Sur · Santa Cruz ↔ Los Cristianos',
-    icon:     '🛣️',
+    icon:     '🛣',
     cameras: [
-      { id: 'tf1_rec_ferial',      name: 'TF-1 · Rotonda Recinto Ferial' },
-      { id: 'tf1_falso_tun',       name: 'TF-1 · Falso Túnel'            },
-      { id: 'tf1_radazul',         name: 'TF-1 · Radazul'                },
-      { id: 'tf1_tabaiba',         name: 'TF-1 · Tabaiba'                },
-      { id: 'tf1_bco_hondo',       name: 'TF-1 · Barranco Hondo'         },
-      { id: 'tf1_caletillas',      name: 'TF-1 · Caletillas'             },
-      { id: 'tf1_candelaria',      name: 'TF-1 · Candelaria'             },
-      { id: 'tf1_guimar',          name: 'TF-1 · Güímar'                 },
-      { id: 'tf1_fasnia',          name: 'TF-1 · Fasnia'                 },
-      { id: 'tf1_pguimar',         name: 'TF-1 · Puertito de Güímar'     },
-      { id: 'tf1_el_medano',       name: 'TF-1 · El Médano'              },
-      { id: 'tf1_granadilla',      name: 'TF-1 · Granadilla de Abona'    },
-      { id: 'tf1_los_abrigos',     name: 'TF-1 · Los Abrigos'            },
-      { id: 'tf1_las_galletas',    name: 'TF-1 · Las Galletas'           },
+      { num: 16, name: 'TF-1 · Rotonda Recinto Ferial' },
+      { num: 17, name: 'TF-1 · Falso Túnel'            },
+      { num: 18, name: 'TF-1 · Radazul'                },
+      { num: 19, name: 'TF-1 · Tabaiba'                },
+      { num: 20, name: 'TF-1 · Barranco Hondo'         },
+      { num: 21, name: 'TF-1 · Caletillas'             },
+      { num: 22, name: 'TF-1 · Candelaria'             },
+      { num: 23, name: 'TF-1 · Güímar'                 },
+      { num: 24, name: 'TF-1 · Fasnia'                 },
+      { num: 25, name: 'TF-1 · Puertito de Güímar'     },
+      { num: 26, name: 'TF-1 · El Médano'              },
+      { num: 27, name: 'TF-1 · Granadilla de Abona'    },
+      { num: 28, name: 'TF-1 · Los Abrigos'            },
+      { num: 29, name: 'TF-1 · Las Galletas'           },
     ]
   },
   {
@@ -98,27 +90,27 @@ const CAMERA_GROUPS = [
     subtitle: 'Vía de Circunvalación de Santa Cruz',
     icon:     '🔄',
     cameras: [
-      { id: 'tf13_entrada_n',     name: 'TF-13 · Entrada Norte'      },
-      { id: 'tf13_paso_alto',     name: 'TF-13 · Paso Alto'          },
-      { id: 'tf13_ofra',          name: 'TF-13 · Ofra'               },
-      { id: 'tf13_el_chorrillo',  name: 'TF-13 · El Chorrillo'       },
-      { id: 'tf13_la_gallega',    name: 'TF-13 · La Gallega'         },
-      { id: 'tf13_bco_santos',    name: 'TF-13 · Barranco Santos'    },
-      { id: 'tf13_salida_s',      name: 'TF-13 · Salida Sur'         },
+      { num: 30, name: 'TF-13 · Entrada Norte'    },
+      { num: 31, name: 'TF-13 · Paso Alto'        },
+      { num: 32, name: 'TF-13 · Ofra'             },
+      { num: 33, name: 'TF-13 · El Chorrillo'     },
+      { num: 34, name: 'TF-13 · La Gallega'       },
+      { num: 35, name: 'TF-13 · Barranco Santos'  },
+      { num: 36, name: 'TF-13 · Salida Sur'       },
     ]
   },
   {
     id:       'tf2',
     name:     'Cámaras de TF-2',
     subtitle: 'Autovía Metropolitana',
-    icon:     '🏙️',
+    icon:     '🏙',
     cameras: [
-      { id: 'tf2_sta_maria',      name: 'TF-2 · Sta. María del Mar'  },
-      { id: 'tf2_chumberas',      name: 'TF-2 · Chumberas'           },
-      { id: 'tf2_taco',           name: 'TF-2 · Taco'                },
-      { id: 'tf2_la_laguna',      name: 'TF-2 · La Laguna'           },
-      { id: 'tf2_bco_hondo',      name: 'TF-2 · Bco. Hondo'         },
-      { id: 'tf2_estadio',        name: 'TF-2 · Estadio Heliodoro'   },
+      { num: 37, name: 'TF-2 · Sta. María del Mar' },
+      { num: 38, name: 'TF-2 · Chumberas'          },
+      { num: 39, name: 'TF-2 · Taco'               },
+      { num: 40, name: 'TF-2 · La Laguna'          },
+      { num: 41, name: 'TF-2 · Bco. Hondo'         },
+      { num: 42, name: 'TF-2 · Estadio Heliodoro'  },
     ]
   },
   {
@@ -127,27 +119,27 @@ const CAMERA_GROUPS = [
     subtitle: 'Zona Noreste de la Isla',
     icon:     '🌿',
     cameras: [
-      { id: 'ne_tacoronte',       name: 'Noreste · Tacoronte'         },
-      { id: 'ne_el_sauzal',       name: 'Noreste · El Sauzal'         },
-      { id: 'ne_la_victoria',     name: 'Noreste · La Victoria'       },
-      { id: 'ne_sta_ursula',      name: 'Noreste · Sta. Úrsula'       },
-      { id: 'ne_la_matanza',      name: 'Noreste · La Matanza'        },
+      { num: 43, name: 'Noreste · Tacoronte'       },
+      { num: 44, name: 'Noreste · El Sauzal'       },
+      { num: 45, name: 'Noreste · La Victoria'     },
+      { num: 46, name: 'Noreste · Sta. Úrsula'     },
+      { num: 47, name: 'Noreste · La Matanza'      },
     ]
   },
   {
     id:       'staCruz',
     name:     'Cámaras de Sta. Cruz',
     subtitle: 'Zona Urbana de Santa Cruz de Tenerife',
-    icon:     '🏛️',
+    icon:     '🏛',
     cameras: [
-      { id: 'sc_av_constitucion', name: 'Avda. de la Constitución'   },
-      { id: 'sc_av_3mayo',        name: 'Avda. Tres de Mayo'         },
-      { id: 'sc_rec_ferial',      name: 'Recinto Ferial'             },
-      { id: 'sc_la_salle',        name: 'La Salle'                   },
-      { id: 'sc_av_maritima',     name: 'Avda. Marítima'             },
-      { id: 'sc_el_pilar',        name: 'El Pilar'                   },
-      { id: 'sc_casa_roja',       name: 'Casa Roja'                  },
-      { id: 'sc_wu_tang',         name: 'Añaza / Wu Tang'            },
+      { num: 48, name: 'Avda. de la Constitución' },
+      { num: 49, name: 'Avda. Tres de Mayo'       },
+      { num: 50, name: 'Recinto Ferial'           },
+      { num: 51, name: 'La Salle'                 },
+      { num: 52, name: 'Avda. Marítima'           },
+      { num: 53, name: 'El Pilar'                 },
+      { num: 54, name: 'Casa Roja'                },
+      { num: 55, name: 'Añaza'                    },
     ]
   }
 ];

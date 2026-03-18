@@ -1,28 +1,24 @@
 /**
  * Tráfico Tenerife – App Logic
- * Renders camera grids, handles refresh, modal, and controls.
  *
- * Strategy for camera images:
- * 1. Attempt to fetch the official CIC page via CORS proxy to discover live camera URLs
- * 2. Fall back to static URL list from cameras.js if fetch fails
- * 3. Display cameras grouped by road section (TF-5, TF-1, TF-13, TF-2, Noreste, Sta Cruz)
+ * Renderiza la cuadrícula de cámaras, gestiona el refresco automático,
+ * el modal lightbox y los controles de sección.
+ *
+ * URLs de imágenes: https://cic.tenerife.es/e-Traffic3/data/camara-2701001-{N}.jpg
  */
 
-const REFRESH_INTERVAL_MS = 30000; // 30 seconds
-
-// CORS proxy used to fetch the CIC page from the browser
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
-const CIC_CAM_PAGE = 'https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html';
+const REFRESH_INTERVAL_MS = 30000; // 30 segundos
+// Rango máximo de IDs a explorar en el Modo Escáner
+const SCAN_MIN = 1;
+const SCAN_MAX = 100;
 
 let refreshTimer    = null;
 let countdownTimer  = null;
 let countdownRemain = REFRESH_INTERVAL_MS / 1000;
 let autoRefreshOn   = true;
-let openModalCamId  = null;
+let openModalCamId  = null;   // número de cámara abierta en el modal
 let allExpanded     = true;
-
-// Runtime camera map: camId → { name, url, groupId }
-const activeCameras = {};
+let scannerMode     = false;
 
 /* ── DOM shortcuts ────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
@@ -36,78 +32,12 @@ updateClock();
 setInterval(updateClock, 1000);
 
 /* ──────────────────────────────────────────────────────────
-   CIC PAGE FETCH
-   Tries to pull live camera image URLs from the official
-   CIC Tenerife mosaic page via a CORS proxy.
-   Falls back silently to static URLs in cameras.js.
+   RENDER PRINCIPAL
 ────────────────────────────────────────────────────────── */
-async function discoverCameraUrlsFromCIC() {
-  try {
-    const proxyUrl = CORS_PROXY + encodeURIComponent(CIC_CAM_PAGE);
-    const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
-    if (!resp.ok) return null;
-
-    const html = await resp.text();
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-
-    // Collect all img src / data-src that look like camera images on CIC servers
-    const discovered = {};
-    doc.querySelectorAll('img, [data-src]').forEach(el => {
-      const src = el.src || el.getAttribute('data-src') || '';
-      if (src.includes('cic.tenerife.es') && (src.includes('.jpg') || src.includes('.jpeg') || src.includes('.png'))) {
-        const key = src.split('/').pop().split('?')[0].replace(/\.\w+$/, '');
-        discovered[key] = src;
-      }
-    });
-
-    // Also look for iframes / embeds
-    doc.querySelectorAll('iframe').forEach(el => {
-      const src = el.src || '';
-      if (src.includes('cic.tenerife.es')) {
-        discovered['__iframe__' + Object.keys(discovered).length] = src;
-      }
-    });
-
-    return Object.keys(discovered).length > 0 ? discovered : null;
-  } catch {
-    return null;
-  }
-}
-
-/* ──────────────────────────────────────────────────────────
-   RENDER
-────────────────────────────────────────────────────────── */
-async function init() {
+function init() {
   const mainContent = $('main-content');
   if (!mainContent) return;
 
-  // Show loading state
-  mainContent.innerHTML = `<div style="color:#666;padding:40px;text-align:center;font-size:0.85rem">
-    <div style="font-size:2rem;margin-bottom:12px">⌛</div>
-    Cargando cámaras de tráfico…
-  </div>`;
-
-  // Try to discover live URLs from CIC (non-blocking)
-  const discoveredUrls = await discoverCameraUrlsFromCIC();
-  if (discoveredUrls) {
-    console.info('[TráficoTF] Discovered', Object.keys(discoveredUrls).length, 'camera URLs from CIC');
-  }
-
-  // Register all cameras
-  CAMERA_GROUPS.forEach(group => {
-    group.cameras.forEach(cam => {
-      // If CIC discovery found a matching URL, use it; otherwise static
-      const liveUrl = discoveredUrls && discoveredUrls[cam.id];
-      activeCameras[cam.id] = {
-        name: cam.name,
-        groupId: group.id,
-        liveUrl: liveUrl || null,
-      };
-    });
-  });
-
-  // Render
   mainContent.innerHTML = '';
   mainContent.appendChild(renderControls());
   CAMERA_GROUPS.forEach(g => mainContent.appendChild(renderGroup(g)));
@@ -116,13 +46,15 @@ async function init() {
   resetCountdown();
 }
 
+/* ── Barra de controles ───────────────────────────────────── */
 function renderControls() {
   const wrap = document.createElement('div');
   wrap.className = 'global-controls';
   wrap.innerHTML = `
     <button class="ctrl-btn active" id="btn-auto-refresh">↺ Auto-actualizar</button>
     <button class="ctrl-btn"        id="btn-refresh-now">⟳ Actualizar ahora</button>
-    <button class="ctrl-btn"        id="btn-expand-all">⊞ Expandir todo</button>
+    <button class="ctrl-btn"        id="btn-expand-all">⊟ Colapsar todo</button>
+    <button class="ctrl-btn"        id="btn-scanner">🔍 Explorar IDs</button>
     <div class="refresh-countdown">
       <span id="countdown-label" style="display:flex;align-items:center;gap:6px;">
         Próxima actualización: <strong id="countdown-secs">${countdownRemain}</strong>s
@@ -130,13 +62,14 @@ function renderControls() {
       </span>
     </div>
   `;
-  // Events
   wrap.querySelector('#btn-auto-refresh').addEventListener('click', toggleAutoRefresh);
   wrap.querySelector('#btn-refresh-now').addEventListener('click', refreshAllCams);
   wrap.querySelector('#btn-expand-all').addEventListener('click', toggleAllSections);
+  wrap.querySelector('#btn-scanner').addEventListener('click', toggleScannerMode);
   return wrap;
 }
 
+/* ── Grupo / sección ──────────────────────────────────────── */
 function renderGroup(group) {
   const section = document.createElement('section');
   section.className = 'camera-section';
@@ -162,51 +95,57 @@ function renderGroup(group) {
   const grid = document.createElement('div');
   grid.className = 'camera-grid';
   grid.id = `grid-${group.id}`;
-  group.cameras.forEach(cam => grid.appendChild(makeCamCard(cam)));
+  group.cameras.forEach(cam => grid.appendChild(makeCamCard(cam.num, cam.name)));
   section.appendChild(grid);
 
   return section;
 }
 
-function makeCamCard(cam) {
-  const card = document.createElement('div');
+/* ── Tarjeta de cámara ────────────────────────────────────── */
+function makeCamCard(camNum, camName) {
+  const camId = `cam-${camNum}`;
+  const card  = document.createElement('div');
   card.className = 'cam-card';
-  card.id = `card-${cam.id}`;
+  card.id = `card-${camId}`;
 
-  const imgUrl = getCameraUrl(cam.id);
+  const imgUrl = getCameraUrl(camNum);
 
   card.innerHTML = `
-    <div class="cam-image-wrap" role="button" aria-label="Ampliar cámara ${cam.name}" tabindex="0">
-      <div class="cam-skeleton" id="skel-${cam.id}"></div>
-      <img id="img-${cam.id}"
+    <div class="cam-image-wrap" role="button"
+         aria-label="Ampliar cámara ${camName}" tabindex="0">
+      <div class="cam-skeleton" id="skel-${camId}"></div>
+      <img id="img-${camId}"
            src="${imgUrl}"
-           alt="Cámara de tráfico: ${cam.name}"
+           alt="Cámara de tráfico: ${camName}"
            loading="lazy"
            class="loading"
+           crossorigin="anonymous"
       />
-      <div class="cam-error-overlay" id="err-${cam.id}">
+      <div class="cam-error-overlay" id="err-${camId}">
         <span class="error-icon">📷</span>
         <span>Señal no disponible</span>
-        <button class="cam-btn" onclick="retryCam('${cam.id}',event)">Reintentar</button>
+        <button class="cam-btn" onclick="retryCam(${camNum},event)">Reintentar</button>
       </div>
-      <span class="cam-live" id="live-${cam.id}">
+      <span class="cam-live" id="live-${camId}">
         <span class="cam-live-dot"></span>EN VIVO
       </span>
       <span class="cam-refresh-badge">🔍 Ampliar</span>
     </div>
     <div class="cam-footer">
-      <span class="cam-name" title="${cam.name}">${cam.name}</span>
+      <span class="cam-name" title="${camName}">${camName}</span>
       <div class="cam-actions">
-        <button class="cam-btn" title="Ver ampliada"    onclick="openModal('${cam.id}','${cam.name.replace(/'/g, "\\'")}',event)">⛶</button>
-        <button class="cam-btn" title="Refrescar"       onclick="refreshSingleCam('${cam.id}',event)">↺</button>
+        <button class="cam-btn" title="Ver ampliada"
+          onclick="openModal(${camNum},'${camName.replace(/'/g, "\\'")}',event)">⛶</button>
+        <button class="cam-btn" title="Refrescar"
+          onclick="refreshSingleCam(${camNum},event)">↺</button>
       </div>
     </div>
   `;
 
-  const img  = card.querySelector(`#img-${cam.id}`);
-  const skel = card.querySelector(`#skel-${cam.id}`);
-  const err  = card.querySelector(`#err-${cam.id}`);
-  const live = card.querySelector(`#live-${cam.id}`);
+  const img  = card.querySelector(`#img-${camId}`);
+  const skel = card.querySelector(`#skel-${camId}`);
+  const err  = card.querySelector(`#err-${camId}`);
+  const live = card.querySelector(`#live-${camId}`);
 
   img.addEventListener('load', () => {
     img.classList.remove('loading');
@@ -224,15 +163,16 @@ function makeCamCard(cam) {
     live.innerHTML = '<span class="cam-live-dot"></span>SIN SEÑAL';
   });
 
-  card.querySelector('.cam-image-wrap').addEventListener('click', () => openModal(cam.id, cam.name));
+  card.querySelector('.cam-image-wrap').addEventListener('click', () =>
+    openModal(camNum, camName));
   card.querySelector('.cam-image-wrap').addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') openModal(cam.id, cam.name);
+    if (e.key === 'Enter' || e.key === ' ') openModal(camNum, camName);
   });
 
   return card;
 }
 
-/* ── Navigation badges ────────────────────────────────────── */
+/* ── Badges de navegación ─────────────────────────────────── */
 function updateNavBadges() {
   CAMERA_GROUPS.forEach(g => {
     const el = $(`badge-${g.id}`);
@@ -240,7 +180,7 @@ function updateNavBadges() {
   });
 }
 
-/* ── Section collapse ─────────────────────────────────────── */
+/* ── Colapsar / expandir secciones ───────────────────────── */
 function initSectionCollapse() {
   document.querySelectorAll('.section-header').forEach(header => {
     header.addEventListener('click', () => {
@@ -271,44 +211,49 @@ function toggleSection(header, grid, expand) {
 function toggleAllSections() {
   allExpanded = !allExpanded;
   CAMERA_GROUPS.forEach(g => {
-    const h = document.querySelector(`[data-section="${g.id}"]`);
+    const h  = document.querySelector(`[data-section="${g.id}"]`);
     const gr = $(`grid-${g.id}`);
     toggleSection(h, gr, allExpanded);
   });
   const btn = $('btn-expand-all');
-  if (btn) btn.innerHTML = `${allExpanded ? '⊟ Colapsar todo' : '⊞ Expandir todo'}`;
+  if (btn) btn.innerHTML = allExpanded ? '⊟ Colapsar todo' : '⊞ Expandir todo';
 }
 
-/* ── Camera refresh ───────────────────────────────────────── */
+/* ── Refresco de cámaras ──────────────────────────────────── */
 function refreshAllCams() {
-  CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.id)));
+  if (scannerMode) return;  // el escáner gestiona sus propios estados
+  CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.num)));
   resetCountdown();
-  if (openModalCamId) {
+  if (openModalCamId !== null) {
     const m = $('modal-img');
     if (m) m.src = getCameraUrl(openModalCamId);
   }
 }
 
-function refreshSingleCam(camId, e) {
+function refreshSingleCam(camNum, e) {
   if (e) e.stopPropagation();
-  const img  = $(`img-${camId}`);
-  const skel = $(`skel-${camId}`);
-  const err  = $(`err-${camId}`);
-  const live = $(`live-${camId}`);
+  const camId = `cam-${camNum}`;
+  const img   = $(`img-${camId}`);
+  const skel  = $(`skel-${camId}`);
+  const err   = $(`err-${camId}`);
+  const live  = $(`live-${camId}`);
   if (!img) return;
   if (skel) skel.classList.remove('hidden');
   if (err)  err.classList.remove('visible');
   img.classList.add('loading');
-  if (live) { live.classList.remove('offline'); live.innerHTML = '<span class="cam-live-dot"></span>EN VIVO'; }
-  img.src = getCameraUrl(camId);
+  if (live) {
+    live.classList.remove('offline');
+    live.innerHTML = '<span class="cam-live-dot"></span>EN VIVO';
+  }
+  img.src = getCameraUrl(camNum);
 }
 
-function retryCam(camId, e) {
+function retryCam(camNum, e) {
   if (e) e.stopPropagation();
-  refreshSingleCam(camId);
+  refreshSingleCam(camNum);
 }
 
-/* ── Auto-refresh countdown ───────────────────────────────── */
+/* ── Countdown de auto-refresco ───────────────────────────── */
 function resetCountdown() {
   clearInterval(refreshTimer);
   clearInterval(countdownTimer);
@@ -340,7 +285,6 @@ function toggleAutoRefresh() {
   autoRefreshOn = !autoRefreshOn;
   const btn = $('btn-auto-refresh');
   if (btn) btn.classList.toggle('active', autoRefreshOn);
-
   const lbl = $('countdown-label');
   if (autoRefreshOn) {
     resetCountdown();
@@ -352,11 +296,107 @@ function toggleAutoRefresh() {
   }
 }
 
+/* ──────────────────────────────────────────────────────────
+   MODO ESCÁNER
+   Prueba IDs del SCAN_MIN al SCAN_MAX y muestra los que
+   devuelven una imagen válida. Útil para descubrir los IDs
+   reales del sistema CIC y asignarlos a las secciones.
+────────────────────────────────────────────────────────── */
+let scanAbortController = null;
+
+function toggleScannerMode() {
+  scannerMode = !scannerMode;
+  const mainContent = $('main-content');
+  const btn = $('btn-scanner');
+  if (!mainContent) return;
+
+  if (scannerMode) {
+    // Ocultar secciones normales y mostrar escáner
+    document.querySelectorAll('.camera-section').forEach(s => s.style.display = 'none');
+    clearInterval(refreshTimer);
+    clearInterval(countdownTimer);
+    if (btn) { btn.classList.add('active'); btn.textContent = '✕ Cerrar escáner'; }
+    showScannerPanel(mainContent);
+  } else {
+    // Abortar escaneo activo
+    if (scanAbortController) { scanAbortController.abort(); scanAbortController = null; }
+    const panel = $('scanner-panel');
+    if (panel) panel.remove();
+    document.querySelectorAll('.camera-section').forEach(s => s.style.display = '');
+    if (btn) { btn.classList.remove('active'); btn.textContent = '🔍 Explorar IDs'; }
+    resetCountdown();
+  }
+}
+
+function showScannerPanel(container) {
+  const panel = document.createElement('div');
+  panel.id = 'scanner-panel';
+  panel.innerHTML = `
+    <div class="scanner-header">
+      <div class="scanner-title">🔍 Modo Escáner — Exploración de IDs activos</div>
+      <div class="scanner-info">
+        Probando IDs del <strong>${SCAN_MIN}</strong> al <strong>${SCAN_MAX}</strong>
+        en <code>https://cic.tenerife.es/e-Traffic3/data/camara-${CAM_SERIES}-{N}.jpg</code>
+      </div>
+      <div class="scanner-progress-wrap">
+        <div class="scanner-progress-bar" id="scan-bar"></div>
+      </div>
+      <div class="scanner-status" id="scan-status">Iniciando exploración…</div>
+    </div>
+    <div class="scanner-grid" id="scanner-grid"></div>
+  `;
+  container.appendChild(panel);
+  runScanner();
+}
+
+async function runScanner() {
+  scanAbortController = new AbortController();
+  const grid      = $('scanner-grid');
+  const statusEl  = $('scan-status');
+  const barEl     = $('scan-bar');
+  const total     = SCAN_MAX - SCAN_MIN + 1;
+  let   found     = 0;
+
+  for (let n = SCAN_MIN; n <= SCAN_MAX; n++) {
+    if (scanAbortController.signal.aborted) break;
+
+    const pct = Math.round(((n - SCAN_MIN) / total) * 100);
+    if (barEl)    barEl.style.width = pct + '%';
+    if (statusEl) statusEl.textContent =
+      `Probando ID ${n}/${SCAN_MAX} · ${found} cámara${found !== 1 ? 's' : ''} encontrada${found !== 1 ? 's' : ''}`;
+
+    // Prueba si la imagen carga con un elemento Image oculto
+    const ok = await probeImage(getCameraUrl(n), scanAbortController.signal);
+    if (ok && grid) {
+      found++;
+      const card = makeCamCard(n, `Cámara #${n}`);
+      card.querySelector('.cam-name').textContent = `ID: ${CAM_SERIES}-${n}`;
+      grid.appendChild(card);
+    }
+  }
+
+  if (barEl)    barEl.style.width = '100%';
+  if (statusEl && !scanAbortController.signal.aborted)
+    statusEl.textContent = `Exploración completa: ${found} cámara${found !== 1 ? 's' : ''} activa${found !== 1 ? 's' : ''} de ${total} IDs probados.`;
+}
+
+function probeImage(url, signal) {
+  return new Promise(resolve => {
+    if (signal.aborted) return resolve(false);
+    const img = new Image();
+    const done = ok => { img.onload = img.onerror = null; resolve(ok); };
+    img.onload  = () => done(true);
+    img.onerror = () => done(false);
+    signal.addEventListener('abort', () => done(false), { once: true });
+    img.src = url;
+  });
+}
+
 /* ── Modal / lightbox ─────────────────────────────────────── */
-function openModal(camId, camName, e) {
+function openModal(camNum, camName, e) {
   if (e) e.stopPropagation();
-  openModalCamId = camId;
-  const url = getCameraUrl(camId);
+  openModalCamId = camNum;
+  const url = getCameraUrl(camNum);
 
   const mTitle   = $('modal-title');
   const mImg     = $('modal-img');
@@ -364,12 +404,12 @@ function openModal(camId, camName, e) {
   const mOverlay = $('modal-overlay');
   const mRefBtn  = $('modal-refresh-btn');
 
-  if (mTitle) mTitle.textContent = camName;
-  if (mImg)   { mImg.src = url; mImg.alt = camName; }
-  if (mSrc)   { mSrc.href = url; mSrc.textContent = 'Fuente: CIC Tenerife'; }
+  if (mTitle)   mTitle.textContent = camName;
+  if (mImg)     { mImg.src = url; mImg.alt = camName; }
+  if (mSrc)     { mSrc.href = `${CIC_BASE}camara-${CAM_SERIES}-${camNum}.jpg`; mSrc.textContent = 'Ver en CIC Tenerife'; }
   if (mOverlay) mOverlay.classList.add('open');
-  if (mRefBtn) mRefBtn.onclick = () => {
-    const u = getCameraUrl(camId);
+  if (mRefBtn)  mRefBtn.onclick = () => {
+    const u = getCameraUrl(camNum);
     if (mImg) mImg.src = u;
     if (mSrc) mSrc.href = u;
   };
@@ -384,40 +424,45 @@ function closeModal() {
   document.body.style.overflow = '';
 }
 
-/* ── Back to top ──────────────────────────────────────────── */
+/* ── Volver arriba ────────────────────────────────────────── */
 function initBackToTop() {
   const btn = $('back-to-top');
   if (!btn) return;
-  window.addEventListener('scroll', () => btn.classList.toggle('visible', window.scrollY > 300));
-  btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  window.addEventListener('scroll', () =>
+    btn.classList.toggle('visible', window.scrollY > 300));
+  btn.addEventListener('click', () =>
+    window.scrollTo({ top: 0, behavior: 'smooth' }));
 }
 
-/* ── Nav active state on scroll ──────────────────────────── */
+/* ── ScrollSpy (nav activo al hacer scroll) ──────────────── */
 function initScrollSpy() {
   const links = document.querySelectorAll('.nav-list a');
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         const id = entry.target.id.replace('sec-', '');
-        links.forEach(a => a.classList.toggle('active', a.getAttribute('href') === `#sec-${id}`));
+        links.forEach(a =>
+          a.classList.toggle('active', a.getAttribute('href') === `#sec-${id}`));
       }
     });
   }, { rootMargin: '-30% 0px -60% 0px' });
-
   document.querySelectorAll('.camera-section').forEach(s => observer.observe(s));
 }
 
 /* ── Bootstrap ────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => {
-  init().then(() => {
-    initBackToTop();
-    initScrollSpy();
-  });
+  init();
+  initBackToTop();
+  initScrollSpy();
 
-  // Modal close
+  // Modal: cerrar
   const mClose   = $('modal-close');
   const mOverlay = $('modal-overlay');
   if (mClose)   mClose.addEventListener('click', closeModal);
-  if (mOverlay) mOverlay.addEventListener('click', e => { if (e.target === mOverlay) closeModal(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  if (mOverlay) mOverlay.addEventListener('click', e => {
+    if (e.target === mOverlay) closeModal();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
 });
