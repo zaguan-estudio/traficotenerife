@@ -248,11 +248,11 @@ function refreshFavoritesSection() {
   if (badge)    badge.textContent    = `${n} cámara${n !== 1 ? 's' : ''}`;
   if (navBadge) navBadge.textContent = n || '';
 
+  // Quitar constraint de max-height para que el nuevo contenido sea siempre visible.
+  // (No usar scrollHeight aquí: puede ser 0 si las cards aún no se han pintado.)
   const header = document.querySelector('[data-section="favoritas"]');
   if (header && header.getAttribute('aria-expanded') === 'true') {
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      grid.style.maxHeight = grid.scrollHeight + 'px';
-    }));
+    grid.style.maxHeight = '';
   }
 }
 
@@ -280,6 +280,13 @@ function onFavToggle(camId, e) {
   }
 
   refreshFavoritesSection();
+
+  // Primera favorita añadida → scroll al módulo para que el usuario lo vea
+  if (isFavNow && getFavs().length === 1) {
+    requestAnimationFrame(() => {
+      $('sec-favoritas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 function syncModalFavBtn(btn, isFavNow) {
