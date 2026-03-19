@@ -3,7 +3,7 @@
  * Estilos: Tailwind CSS v4 (compilado con Vite) — paleta Anthropic
  */
 
-const REFRESH_INTERVAL_MS = 30000;
+const REFRESH_INTERVAL_MS = 300000; // 5 minutos
 
 let refreshTimer    = null;
 let countdownTimer  = null;
@@ -66,7 +66,7 @@ function renderControls() {
     <button id="btn-expand-all"   class="${BTN_BASE}">⊟ Colapsar todo</button>
     <div id="countdown-label" class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5">
       Próx. actualización:
-      <strong id="countdown-secs">${countdownRemain}</strong>s
+      <strong id="countdown-secs">${countdownRemain}</strong>
       <div class="w-20 h-0.5 bg-[#e8e6dc] rounded-full overflow-hidden">
         <div id="countdown-fill" class="h-full bg-[#d97757] rounded-full"
              style="width:100%; transition: width 1s linear;"></div>
@@ -305,6 +305,7 @@ function refreshAllCams() {
     const m = $('modal-img');
     if (m) m.src = getCameraUrl(openModalCamId);
   }
+  window.alertas?.analizarTodas?.();
 }
 
 function refreshSingleCam(camId, e) {
@@ -355,7 +356,11 @@ function updateCountdownUI() {
   const secs = $('countdown-secs');
   const pct  = (countdownRemain / (REFRESH_INTERVAL_MS / 1000)) * 100;
   if (fill) fill.style.width = pct + '%';
-  if (secs) secs.textContent = countdownRemain;
+  if (secs) {
+    const m = Math.floor(countdownRemain / 60);
+    const s = countdownRemain % 60;
+    secs.textContent = m > 0 ? `${m}:${String(s).padStart(2, '0')} min` : `${s}s`;
+  }
 }
 
 function toggleAutoRefresh() {
@@ -443,6 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
   initBackToTop();
   initScrollSpy();
+  setTimeout(() => window.alertas?.analizarTodas?.(), 4000);
 
   const mClose   = $('modal-close');
   const mOverlay = $('modal-overlay');

@@ -91,6 +91,11 @@
     </div>
   </nav>
 
+  <!-- ═══════ ALERTAS IA ═══════ -->
+  <div id="alertas-panel" style="display:none"
+       class="border-b border-[#e8e6dc] bg-[#fefefe]"
+       aria-live="polite" aria-label="Alertas de tráfico"></div>
+
   <!-- ═══════ CONTENIDO PRINCIPAL ═══════ -->
   <main id="main-content" class="max-w-[1600px] mx-auto px-3 pb-10"
         role="main" aria-label="Cámaras de tráfico">
@@ -145,12 +150,13 @@
       · Área de Carreteras · Cabildo Insular de Tenerife
     </p>
     <p class="mt-1.5">
-      Las imágenes se actualizan automáticamente cada 30 segundos.
+      Las imágenes se actualizan automáticamente cada 5 minutos.
       Pueden existir desfases temporales respecto a la situación real.
     </p>
   </footer>
 
   <script src="js/cameras.js?v=4"></script>
   <script src="js/app.js?v=4"></script>
+  <script src="js/alertas.js?v=1"></script>
 </body>
 </html>
