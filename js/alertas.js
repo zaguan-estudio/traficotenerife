@@ -39,27 +39,14 @@ const estadoActivo = new Map();
 const domId = id => id.replace(/-/g, '_');
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-/* ── Captura de imagen como base64 ────────────────────────── */
-async function fetchImageBase64(camId) {
-  const url = `https://cic.tenerife.es/e-Traffic3/data/camara-${camId}.jpg?t=${Date.now()}`;
-  const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const blob = await resp.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-    reader.onerror   = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-/* ── Gemini API cloud ──────────────────────────────────────── */
-async function analizarConAPI(base64) {
+/* ── Gemini API — imagen por URL (server-side, sin CORS) ───── */
+async function analizarConAPI(imageUrl) {
+  // Gemini fetchea la imagen desde sus servidores → no hay CORS desde el browser
   const body = JSON.stringify({
     contents: [{
       parts: [
         { text: PROMPT },
-        { inlineData: { mimeType: 'image/jpeg', data: base64 } }
+        { fileData: { mimeType: 'image/jpeg', fileUri: imageUrl } }
       ]
     }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 120 }
@@ -70,7 +57,10 @@ async function analizarConAPI(base64) {
     body,
     signal: AbortSignal.timeout(25000)
   });
-  if (!resp.ok) throw new Error(`Gemini API ${resp.status}`);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(`Gemini ${resp.status}: ${err?.error?.message ?? resp.statusText}`);
+  }
   const data  = await resp.json();
   const text  = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   const clean = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
@@ -79,20 +69,17 @@ async function analizarConAPI(base64) {
 
 /* ── Análisis de una cámara ────────────────────────────────── */
 async function analizarCamara(cam) {
-  let base64;
+  // URL sin cache-bust para que Gemini pueda cachear si quiere,
+  // pero con timestamp para forzar imagen reciente
+  const imageUrl = `https://cic.tenerife.es/e-Traffic3/data/camara-${cam.id}.jpg?t=${Date.now()}`;
   try {
-    base64 = await fetchImageBase64(cam.id);
+    const result = await analizarConAPI(imageUrl);
+    if (result?.estado) return result;
+    throw new Error('Respuesta sin campo estado');
   } catch (e) {
-    console.warn(`[alertas] Imagen no disponible (${cam.name}):`, e.message);
+    console.warn(`[alertas] Error en ${cam.name}:`, e.message);
     return null;
   }
-  try {
-    const result = await analizarConAPI(base64);
-    if (result?.estado) return result;
-  } catch (e) {
-    console.warn(`[alertas] Error Gemini (${cam.name}):`, e.message);
-  }
-  return null;
 }
 
 /* ── Actualizar estadoActivo con resultado ─────────────────── */
