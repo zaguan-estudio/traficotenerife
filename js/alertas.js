@@ -7,7 +7,7 @@
 
 // URL del Cloudflare Worker — ver proxy/worker.js y proxy/wrangler.toml
 // Formato: https://trafico-tenerife.TU-USUARIO.workers.dev  (sin barra final)
-const WORKER_BASE = '';
+const WORKER_BASE = 'https://traficotenerife.nameless-bush-75c2.workers.dev';
 
 const MONITORED_CAMS = [
   { id: '2701002-516', name: 'TF-5 · pk A1', road: 'TF-5' },
