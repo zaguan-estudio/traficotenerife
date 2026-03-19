@@ -80,6 +80,7 @@
        aria-label="Secciones de cámaras">
     <div class="overflow-x-auto no-scrollbar">
     <ul class="flex list-none px-2 gap-0.5 min-w-max" id="nav-list" role="list">
+      <li><a href="#sec-favoritas"    class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">★ Favs <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-favoritas-nav"></span></a></li>
       <li><a href="#sec-norte"       class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">TF-5 <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-norte"></span></a></li>
       <li><a href="#sec-sur"         class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">TF-1 <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-sur"></span></a></li>
       <li><a href="#sec-tf2"         class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">TF-2 <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tf2"></span></a></li>
@@ -129,6 +130,8 @@
           <a id="modal-source-link" href="#" target="_blank" rel="noopener"
              class="text-[#d97757] hover:underline">CIC Tenerife</a>
         </span>
+        <button class="bg-transparent border border-[#e8e6dc] text-[#6b6860] px-3 py-1.5 rounded text-xs cursor-pointer hover:border-[#d97757] hover:text-[#d97757] transition-colors"
+                id="modal-fav-btn">☆ Añadir a favoritas</button>
         <button class="bg-[#d97757] text-white border-0 px-3 py-1.5 rounded text-xs font-semibold cursor-pointer hover:bg-[#c46644] transition-colors"
                 id="modal-refresh-btn">↺ Actualizar imagen</button>
       </div>
@@ -156,6 +159,7 @@
   </footer>
 
   <script src="js/cameras.js?v=5"></script>
+  <script src="js/favorites.js?v=5"></script>
   <script src="js/app.js?v=5"></script>
   <script src="js/alertas.js?v=5"></script>
 </body>

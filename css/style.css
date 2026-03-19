@@ -6,6 +6,7 @@
 @source "../js/app.js";
 @source "../js/cameras.js";
 @source "../js/alertas.js";
+@source "../js/favorites.js";
 
 /* ─── Colores personalizados (paleta Anthropic) ────────────── */
 @theme {

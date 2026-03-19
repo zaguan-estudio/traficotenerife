@@ -31,9 +31,27 @@ function init() {
   if (!main) return;
   main.innerHTML = '';
   main.appendChild(renderControls());
+  main.appendChild(renderFavoritesSection());          // Favoritas: primera y abierta
   CAMERA_GROUPS.forEach(g => main.appendChild(renderGroup(g)));
   updateNavBadges();
   initSectionCollapse();
+  // Grupos regulares: colapsados por defecto (sin animación en carga inicial)
+  CAMERA_GROUPS.forEach(g => {
+    const h  = document.querySelector(`[data-section="${g.id}"]`);
+    const gr = $(`grid-${g.id}`);
+    if (!h || !gr) return;
+    gr.style.transition    = 'none';
+    gr.style.maxHeight     = '0';
+    gr.style.opacity       = '0';
+    gr.style.pointerEvents = 'none';
+    h.setAttribute('aria-expanded', 'false');
+    const tog = h.querySelector('[data-toggle]');
+    if (tog) tog.style.transform = 'rotate(-90deg)';
+    requestAnimationFrame(() => { gr.style.transition = 'max-height 0.5s ease, opacity 0.3s ease'; });
+  });
+  allExpanded = false;
+  const expandBtn = $('btn-expand-all');
+  if (expandBtn) expandBtn.innerHTML = '⊞ Expandir todo';
   resetCountdown();
   initStickyNav();
 }
@@ -152,9 +170,133 @@ function renderGroup(group) {
   return section;
 }
 
+/* ── Helpers de favoritas ─────────────────────────────────── */
+function buildCamMap() {
+  const map = new Map();
+  CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => map.set(c.id, c.name)));
+  return map;
+}
+
+function renderFavoritesSection() {
+  const section = document.createElement('section');
+  section.className = 'camera-section my-6 scroll-mt-28';
+  section.id = 'sec-favoritas';
+
+  const favIds = getFavs();
+  const n      = favIds.length;
+
+  const header = document.createElement('div');
+  header.className = 'flex items-center gap-3 px-5 py-4 bg-[#e5e0d5] border border-[#141413] rounded-2xl mb-3 cursor-pointer select-none transition-all hover:bg-[#dedad0]';
+  header.setAttribute('role', 'button');
+  header.setAttribute('aria-expanded', 'true');
+  header.setAttribute('data-section', 'favoritas');
+  header.innerHTML = `
+    <div class="flex-1 min-w-0">
+      <div class="text-[15px] font-bold text-[#141413] tracking-wide">
+        <span class="text-[#d97757]">★</span> Mis Favoritas
+      </div>
+      <div class="text-[11px] text-[#6b6860] mt-0.5">Cámaras guardadas</div>
+    </div>
+    <span id="badge-favoritas"
+          class="text-[11px] text-[#141413] bg-[#141413]/10 px-2.5 py-0.5 rounded-full border border-[#141413]/20 whitespace-nowrap shrink-0">
+      ${n} cámara${n !== 1 ? 's' : ''}
+    </span>
+    <span class="text-[#6b6860] text-sm shrink-0 transition-transform duration-300" data-toggle aria-hidden="true">▾</span>
+  `;
+  section.appendChild(header);
+
+  const grid = document.createElement('div');
+  grid.className  = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 overflow-hidden';
+  grid.style.transition = 'max-height 0.5s ease, opacity 0.3s ease';
+  grid.id = 'grid-favoritas';
+  renderFavoritesGrid(grid, favIds);
+  section.appendChild(grid);
+
+  return section;
+}
+
+function renderFavoritesGrid(grid, favIds) {
+  const camMap = buildCamMap();
+  grid.innerHTML = '';
+  if (favIds.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'col-span-full py-10 text-center text-[#6b6860] text-sm';
+    empty.innerHTML = `
+      <div class="text-4xl mb-3 opacity-30">★</div>
+      <p class="font-medium">Todavía no tienes cámaras favoritas</p>
+      <p class="text-xs mt-1 text-[#b0aea5]">Abre cualquier cámara y pulsa «Añadir a favoritas»</p>
+    `;
+    grid.appendChild(empty);
+  } else {
+    favIds.forEach(camId => {
+      const camName = camMap.get(camId) || camId;
+      grid.appendChild(makeCamCard(camId, camName, true));
+    });
+  }
+}
+
+function refreshFavoritesSection() {
+  const grid = $('grid-favoritas');
+  if (!grid) return;
+
+  const favIds = getFavs();
+  renderFavoritesGrid(grid, favIds);
+
+  const n = favIds.length;
+  const badge    = $('badge-favoritas');
+  const navBadge = $('badge-favoritas-nav');
+  if (badge)    badge.textContent    = `${n} cámara${n !== 1 ? 's' : ''}`;
+  if (navBadge) navBadge.textContent = n || '';
+
+  const header = document.querySelector('[data-section="favoritas"]');
+  if (header && header.getAttribute('aria-expanded') === 'true') {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      grid.style.maxHeight = grid.scrollHeight + 'px';
+    }));
+  }
+}
+
+function onFavToggle(camId, e) {
+  if (e) e.stopPropagation();
+  const isFavNow = toggleFav(camId);
+
+  // Actualizar todos los botones estrella de esta cámara en el DOM
+  document.querySelectorAll(`[data-fav-id="${camId}"]`).forEach(btn => {
+    btn.textContent = isFavNow ? '★' : '☆';
+    btn.title = isFavNow ? 'Quitar de favoritas' : 'Añadir a favoritas';
+    if (isFavNow) {
+      btn.classList.remove('border-[#e8e6dc]', 'text-[#6b6860]');
+      btn.classList.add('border-[#d97757]', 'text-[#d97757]');
+    } else {
+      btn.classList.remove('border-[#d97757]', 'text-[#d97757]');
+      btn.classList.add('border-[#e8e6dc]', 'text-[#6b6860]');
+    }
+  });
+
+  // Actualizar botón del modal si está abierto para esta cámara
+  if (openModalCamId === camId) {
+    const mBtn = $('modal-fav-btn');
+    if (mBtn) syncModalFavBtn(mBtn, isFavNow);
+  }
+
+  refreshFavoritesSection();
+}
+
+function syncModalFavBtn(btn, isFavNow) {
+  btn.innerHTML = isFavNow ? '★ Favorita' : '☆ Añadir a favoritas';
+  btn.title     = isFavNow ? 'Quitar de favoritas' : 'Añadir a favoritas';
+  if (isFavNow) {
+    btn.classList.remove('border-[#e8e6dc]', 'text-[#6b6860]');
+    btn.classList.add('border-[#d97757]', 'text-[#d97757]');
+  } else {
+    btn.classList.remove('border-[#d97757]', 'text-[#d97757]');
+    btn.classList.add('border-[#e8e6dc]', 'text-[#6b6860]');
+  }
+}
+
 /* ── Tarjeta de cámara ────────────────────────────────────── */
-function makeCamCard(camId, camName) {
-  const domId    = `cam_${domSafe(camId)}`;
+function makeCamCard(camId, camName, favMode = false) {
+  const domId    = favMode ? `fav_${domSafe(camId)}` : `cam_${domSafe(camId)}`;
   const card     = document.createElement('div');
   card.className = 'bg-white border border-[#e8e6dc] rounded-xl overflow-hidden transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-[#d97757] group';
   card.id = `card-${domId}`;
@@ -211,6 +353,10 @@ function makeCamCard(camId, camName) {
         <button class="bg-transparent border border-[#e8e6dc] text-[#6b6860] px-2 py-1 rounded text-[11px] cursor-pointer transition-all hover:border-[#d97757] hover:text-[#d97757]"
                 title="Refrescar"
                 onclick="refreshSingleCam('${camIdEsc}',event)">↺</button>
+        <button class="bg-transparent border px-2 py-1 rounded text-[11px] cursor-pointer transition-all hover:border-[#d97757] hover:text-[#d97757] ${isFav(camId) ? 'border-[#d97757] text-[#d97757]' : 'border-[#e8e6dc] text-[#6b6860]'}"
+                title="${isFav(camId) ? 'Quitar de favoritas' : 'Añadir a favoritas'}"
+                data-fav-id="${camId}"
+                onclick="onFavToggle('${camIdEsc}',event)">${isFav(camId) ? '★' : '☆'}</button>
       </div>
     </div>
   `;
@@ -336,6 +482,7 @@ async function lanzarDeteccionIA() {
 /* ── Refresco de cámaras ──────────────────────────────────── */
 function refreshAllCams() {
   CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.id)));
+  refreshFavoritesSection();
   resetCountdown();
   if (openModalCamId !== null) {
     const m = $('modal-img');
@@ -430,6 +577,13 @@ function openModal(camId, camName, e) {
   if (mImg)     { mImg.src = url; mImg.alt = camName; }
   if (mSrc)     { mSrc.href = `${CIC_BASE}camara-${camId}.jpg`; mSrc.textContent = 'Ver en CIC Tenerife'; }
   if (mOverlay) mOverlay.style.display = 'flex';
+
+  const mFavBtn = $('modal-fav-btn');
+  if (mFavBtn) {
+    syncModalFavBtn(mFavBtn, isFav(camId));
+    mFavBtn.onclick = e => onFavToggle(camId, e);
+  }
+
   if (mRefBtn)  mRefBtn.onclick = () => {
     const u = getCameraUrl(camId);
     if (mImg) mImg.src = u;
