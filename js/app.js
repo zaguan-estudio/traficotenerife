@@ -64,6 +64,7 @@ function renderControls() {
     <button id="btn-auto-refresh" class="${BTN_ACTIVE}">↺ Auto-actualizar</button>
     <button id="btn-refresh-now"  class="${BTN_BASE}">⟳ Actualizar ahora</button>
     <button id="btn-expand-all"   class="${BTN_BASE}">⊟ Colapsar todo</button>
+    <button id="btn-detectar-ia"  class="${BTN_BASE}">🔍 Detectar atascos con IA</button>
     <div id="countdown-label" class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5">
       Próx. actualización:
       <strong id="countdown-secs">${countdownRemain}</strong>
@@ -112,6 +113,7 @@ function renderControls() {
   panel.querySelector('#btn-auto-refresh').addEventListener('click', toggleAutoRefresh);
   panel.querySelector('#btn-refresh-now').addEventListener('click', refreshAllCams);
   panel.querySelector('#btn-expand-all').addEventListener('click', toggleAllSections);
+  panel.querySelector('#btn-detectar-ia').addEventListener('click', lanzarDeteccionIA);
 
   return wrap;
 }
@@ -295,6 +297,37 @@ function toggleAllSections() {
   });
   const btn = $('btn-expand-all');
   if (btn) btn.innerHTML = allExpanded ? '⊟ Colapsar todo' : '⊞ Expandir todo';
+}
+
+/* ── Detección manual de atascos con IA ───────────────────── */
+async function lanzarDeteccionIA() {
+  const btn = $('btn-detectar-ia');
+  if (!btn || btn.disabled) return;
+
+  // Estado de carga
+  btn.disabled  = true;
+  btn.className = BTN_ACTIVE + ' opacity-75 cursor-not-allowed';
+  btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Analizando…';
+
+  try {
+    await window.alertas?.analizarTodas?.();
+
+    // Feedback visual según resultado
+    const hayAlertas = document.querySelector('#alertas-panel [class*="border-red"], #alertas-panel [class*="border-amber"]');
+    btn.className = hayAlertas ? BTN_ACTIVE : 'bg-green-50 border border-green-300 text-green-700 px-3.5 py-1.5 rounded text-xs flex items-center gap-1.5 shadow-sm';
+    btn.innerHTML = hayAlertas ? '⚠️ Ver alertas' : '✓ Sin incidencias';
+  } catch {
+    btn.className = BTN_BASE;
+    btn.innerHTML = '🔍 Detectar atascos con IA';
+  } finally {
+    btn.disabled = false;
+    setTimeout(() => {
+      if (btn) {
+        btn.className = BTN_BASE;
+        btn.innerHTML = '🔍 Detectar atascos con IA';
+      }
+    }, 4000);
+  }
 }
 
 /* ── Refresco de cámaras ──────────────────────────────────── */

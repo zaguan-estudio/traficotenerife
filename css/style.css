@@ -5,6 +5,7 @@
 @source "../index.html";
 @source "../js/app.js";
 @source "../js/cameras.js";
+@source "../js/alertas.js";
 
 /* ─── Colores personalizados (paleta Anthropic) ────────────── */
 @theme {
@@ -44,3 +45,9 @@
 }
 
 .modal-animate { animation: modal-in 0.2s ease; }
+
+/* ─── Spin para botón de carga ──────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
