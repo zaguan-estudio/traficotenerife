@@ -212,48 +212,40 @@ function renderFavoritesSection() {
   renderFavoritesGrid(grid, favIds);
   section.appendChild(grid);
 
+  if (n === 0) section.style.display = 'none';
+
   return section;
 }
 
 function renderFavoritesGrid(grid, favIds) {
   const camMap = buildCamMap();
   grid.innerHTML = '';
-  if (favIds.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'col-span-full py-10 text-center text-[#6b6860] text-sm';
-    empty.innerHTML = `
-      <div class="text-4xl mb-3 opacity-30">★</div>
-      <p class="font-medium">Todavía no tienes cámaras favoritas</p>
-      <p class="text-xs mt-1 text-[#b0aea5]">Abre cualquier cámara y pulsa «Añadir a favoritas»</p>
-    `;
-    grid.appendChild(empty);
-  } else {
-    favIds.forEach(camId => {
-      const camName = camMap.get(camId) || camId;
-      grid.appendChild(makeCamCard(camId, camName, true));
-    });
-  }
+  favIds.forEach(camId => {
+    const camName = camMap.get(camId) || camId;
+    grid.appendChild(makeCamCard(camId, camName, true));
+  });
 }
 
 function refreshFavoritesSection() {
-  const grid = $('grid-favoritas');
-  if (!grid) return;
+  const grid    = $('grid-favoritas');
+  const section = $('sec-favoritas');
+  if (!grid || !section) return;
 
   const favIds = getFavs();
-  renderFavoritesGrid(grid, favIds);
+  const n      = favIds.length;
 
-  const n = favIds.length;
+  // Ocultar el módulo completo si no hay favoritas
+  section.style.display = n === 0 ? 'none' : '';
+
+  if (n > 0) {
+    renderFavoritesGrid(grid, favIds);
+    grid.style.maxHeight = ''; // altura natural, sin restricción
+  }
+
   const badge    = $('badge-favoritas');
   const navBadge = $('badge-favoritas-nav');
   if (badge)    badge.textContent    = `${n} cámara${n !== 1 ? 's' : ''}`;
   if (navBadge) navBadge.textContent = n || '';
-
-  // Quitar constraint de max-height para que el nuevo contenido sea siempre visible.
-  // (No usar scrollHeight aquí: puede ser 0 si las cards aún no se han pintado.)
-  const header = document.querySelector('[data-section="favoritas"]');
-  if (header && header.getAttribute('aria-expanded') === 'true') {
-    grid.style.maxHeight = '';
-  }
 }
 
 function onFavToggle(camId, e) {
