@@ -41,24 +41,12 @@ function init() {
 const BTN_BASE   = 'bg-white border border-[#e8e6dc] text-[#6b6860] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 hover:border-[#d97757] hover:text-[#d97757] shadow-sm';
 const BTN_ACTIVE = 'bg-[#d97757]/10 border border-[#d97757] text-[#d97757] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 shadow-sm';
 
-const GEAR_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
-
 function renderControls() {
   const wrap = document.createElement('div');
   wrap.className = 'py-3';
 
-  // Gear bar: visible only on mobile
-  const mobileBar = document.createElement('div');
-  mobileBar.id = 'controls-mobile-bar';
-  mobileBar.className = 'flex items-center';
-  mobileBar.innerHTML = `
-    <button id="btn-settings-toggle" class="${BTN_BASE}"
-            aria-expanded="false" aria-controls="settings-panel">
-      ${GEAR_SVG} Ajustes
-    </button>
-  `;
-
-  // Settings panel: collapsible on mobile, always visible on desktop
+  // Settings panel: collapsible on mobile (toggled by #btn-settings-toggle in the top bar),
+  // always visible on desktop
   const panel = document.createElement('div');
   panel.id = 'settings-panel';
   panel.innerHTML = `
@@ -75,7 +63,6 @@ function renderControls() {
     </div>
   `;
 
-  wrap.appendChild(mobileBar);
   wrap.appendChild(panel);
 
   let settingsOpen = false;
@@ -83,11 +70,9 @@ function renderControls() {
 
   function applyLayout(isDesktop) {
     if (isDesktop) {
-      mobileBar.style.display = 'none';
       panel.style.cssText = 'display:flex; flex-wrap:wrap; gap:10px; align-items:center;';
       panel.querySelector('#countdown-label').style.display = 'flex';
     } else {
-      mobileBar.style.display = 'flex';
       if (settingsOpen) {
         panel.style.cssText = 'display:flex; flex-direction:column; gap:8px; margin-top:8px; padding:12px; background:white; border:1px solid #e8e6dc; border-radius:12px;';
         panel.querySelector('#countdown-label').style.display = 'none';
@@ -100,11 +85,15 @@ function renderControls() {
   applyLayout(mq.matches);
   mq.addEventListener('change', e => applyLayout(e.matches));
 
-  mobileBar.querySelector('#btn-settings-toggle').addEventListener('click', () => {
-    settingsOpen = !settingsOpen;
-    mobileBar.querySelector('#btn-settings-toggle').setAttribute('aria-expanded', String(settingsOpen));
-    applyLayout(mq.matches);
-  });
+  // Gear button lives in the static HTML top bar
+  const gearBtn = document.getElementById('btn-settings-toggle');
+  if (gearBtn) {
+    gearBtn.addEventListener('click', () => {
+      settingsOpen = !settingsOpen;
+      gearBtn.setAttribute('aria-expanded', String(settingsOpen));
+      applyLayout(mq.matches);
+    });
+  }
 
   panel.querySelector('#btn-auto-refresh').addEventListener('click', toggleAutoRefresh);
   panel.querySelector('#btn-refresh-now').addEventListener('click', refreshAllCams);

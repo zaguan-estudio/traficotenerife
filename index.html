@@ -54,20 +54,25 @@
   </header>
 
   <!-- ═══════ TOP BAR ═══════ -->
-  <div class="bg-[#f5f3ee] px-4 py-1.5 flex justify-between items-center text-xs text-[#6b6860] border-b border-[#e8e6dc] flex-wrap gap-1.5">
+  <div class="bg-[#f5f3ee] px-4 py-1.5 flex items-center gap-3 text-xs text-[#6b6860] border-b border-[#e8e6dc]">
     <span>
       Fuente:
       <a href="https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html"
          target="_blank" rel="noopener"
          class="text-[#d97757] hover:underline">
-        CIC Tenerife – Cabildo Insular
+        CIC Tenerife
       </a>
     </span>
-    <span class="inline-flex items-center gap-1.5">
+    <span class="inline-flex items-center gap-1.5 ml-auto">
       <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse" id="status-dot"></span>
       En directo ·
       <span id="current-time" class="font-mono">--:--:--</span>
     </span>
+    <button id="btn-settings-toggle"
+            class="md:hidden flex items-center justify-center w-6 h-6 rounded border border-[#e8e6dc] bg-white text-[#6b6860] hover:border-[#d97757] hover:text-[#d97757] transition-all cursor-pointer shrink-0"
+            aria-expanded="false" aria-controls="settings-panel" aria-label="Ajustes">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
   </div>
 
   <!-- ═══════ NAVEGACIÓN ═══════ -->
