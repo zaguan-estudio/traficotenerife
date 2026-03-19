@@ -1,6 +1,11 @@
 /* ─── Tailwind CSS v4 ──────────────────────────────────────── */
 @import "tailwindcss";
 
+/* Forzar escaneo de archivos no procesados por Vite como módulos */
+@source "../index.html";
+@source "../js/app.js";
+@source "../js/cameras.js";
+
 /* ─── Colores personalizados ───────────────────────────────── */
 @theme {
   --color-accent:       #e8a000;
