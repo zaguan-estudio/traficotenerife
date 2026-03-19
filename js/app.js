@@ -43,12 +43,12 @@ const BTN_ACTIVE = 'bg-[#d97757]/10 border border-[#d97757] text-[#d97757] px-3.
 
 function renderControls() {
   const wrap = document.createElement('div');
-  wrap.className = 'py-3';
 
   // Settings panel: collapsible on mobile (toggled by #btn-settings-toggle in the top bar),
   // always visible on desktop
   const panel = document.createElement('div');
   panel.id = 'settings-panel';
+  panel.style.display = 'none'; // hidden by default; applyLayout will show on desktop
   panel.innerHTML = `
     <button id="btn-auto-refresh" class="${BTN_ACTIVE}">↺ Auto-actualizar</button>
     <button id="btn-refresh-now"  class="${BTN_BASE}">⟳ Actualizar ahora</button>
@@ -70,13 +70,16 @@ function renderControls() {
 
   function applyLayout(isDesktop) {
     if (isDesktop) {
+      wrap.style.cssText = 'padding-top:12px; padding-bottom:12px;';
       panel.style.cssText = 'display:flex; flex-wrap:wrap; gap:10px; align-items:center;';
       panel.querySelector('#countdown-label').style.display = 'flex';
     } else {
       if (settingsOpen) {
-        panel.style.cssText = 'display:flex; flex-direction:column; gap:8px; margin-top:8px; padding:12px; background:white; border:1px solid #e8e6dc; border-radius:12px;';
+        wrap.style.cssText = 'padding-bottom:8px;';
+        panel.style.cssText = 'display:flex; flex-direction:column; gap:8px; padding:12px; background:white; border:1px solid #e8e6dc; border-radius:12px;';
         panel.querySelector('#countdown-label').style.display = 'none';
       } else {
+        wrap.style.cssText = '';
         panel.style.display = 'none';
       }
     }
