@@ -3,27 +3,41 @@
  *
  * - analizarTodas()      → refresco silencioso en segundo plano (cada 5 min)
  * - lanzarConProgreso()  → análisis manual con UI de progreso en tiempo real
+ *
+ * Analiza únicamente las cámaras marcadas como favoritas.
  */
 
 // URL del Cloudflare Worker — ver proxy/worker.js y proxy/wrangler.toml
-// Formato: https://trafico-tenerife.TU-USUARIO.workers.dev  (sin barra final)
 const WORKER_BASE = 'https://traficotenerife.nameless-bush-75c2.workers.dev';
 
-const MONITORED_CAMS = [
-  { id: '2701002-516', name: 'TF-5 · pk A1', road: 'TF-5' },
-  { id: '2701002-517', name: 'TF-5 · pk B1', road: 'TF-5' },
-  { id: '2701002-519', name: 'TF-5 · pk A2', road: 'TF-5' },
-  { id: '2701002-520', name: 'TF-5 · pk B2', road: 'TF-5' },
-  { id: '2701002-521', name: 'TF-5 · pk A3', road: 'TF-5' },
-  { id: '2701002-522', name: 'TF-5 · pk B3', road: 'TF-5' },
-  { id: '2701002-523', name: 'TF-5 · pk A4', road: 'TF-5' },
-  { id: '2701002-525', name: 'TF-5 · pk B4', road: 'TF-5' },
-  { id: '2701002-524', name: 'TF-5 · pk A5', road: 'TF-5' },
-  { id: '2701002-527', name: 'TF-5 · pk B5', road: 'TF-5' },
-  { id: '2701002-526', name: 'TF-5 · pk A6', road: 'TF-5' },
-  { id: '2701002-529', name: 'TF-5 · pk B6', road: 'TF-5' },
-  { id: '2701002-528', name: 'TF-5 · pk A7', road: 'TF-5' },
-];
+/* ── Road label por grupo ──────────────────────────────────── */
+const ROAD_BY_GROUP = {
+  'norte':       'TF-5',
+  'sur':         'TF-1',
+  'tf2':         'TF-2',
+  'tun-litoral': 'Vía Litoral',
+  'tun-vega':    'Tún. Vega',
+  'tun-bicho':   'Tún. Bicho',
+  'tun-guincho': 'Tún. Guincho',
+};
+
+/* ── Índice plano de todas las cámaras: id → {name, road} ─── */
+function buildCamIndex() {
+  const map = new Map();
+  CAMERA_GROUPS.forEach(group => {
+    const road = ROAD_BY_GROUP[group.id] ?? group.name;
+    group.cameras.forEach(cam => map.set(cam.id, { name: cam.name, road }));
+  });
+  return map;
+}
+
+/* ── Lista dinámica: solo cámaras favoritas ────────────────── */
+function getCamsToAnalyze() {
+  const index = buildCamIndex();
+  return getFavs()
+    .filter(id => index.has(id))
+    .map(id => ({ id, ...index.get(id) }));
+}
 
 /* ── Estado activo de alertas: Map<camId, alertData> ───────── */
 const estadoActivo = new Map();
@@ -76,16 +90,16 @@ function aplicarResultado(cam, res) {
    REFRESCO SILENCIOSO (automático, cada 5 min)
    ════════════════════════════════════════════════════════════ */
 async function analizarTodas() {
+  const cams = getCamsToAnalyze();
+  if (!cams.length) return;
   const results = await Promise.allSettled(
-    MONITORED_CAMS.map(cam => analizarCamara(cam).then(res => ({ cam, res })))
+    cams.map(cam => analizarCamara(cam).then(res => ({ cam, res })))
   );
   let changed = false;
   results.forEach(r => {
     if (r.status !== 'fulfilled' || !r.value.res) return;
-    const antes = estadoActivo.has(r.value.cam.id);
     aplicarResultado(r.value.cam, r.value.res);
-    if (antes !== estadoActivo.has(r.value.cam.id)) changed = true;
-    else changed = true; // descripción puede haber cambiado
+    changed = true;
   });
   if (changed) renderPanel();
 }
@@ -97,21 +111,32 @@ async function lanzarConProgreso() {
   const panel = document.getElementById('alertas-panel');
   if (!panel) return 0;
 
-  // Estado de progreso por cámara
-  const progEstado = new Map(MONITORED_CAMS.map(c => [c.id, 'pending']));
+  const cams = getCamsToAnalyze();
+
+  // Sin favoritas — mostrar aviso
+  if (!cams.length) {
+    panel.style.display = '';
+    panel.innerHTML = `
+      <div class="max-w-[1600px] mx-auto px-3 py-3">
+        <div class="bg-white border border-[#e8e6dc] rounded-xl px-4 py-3 text-sm text-[#6b6860] shadow-sm">
+          Añade cámaras a favoritas ⭐ para analizarlas con IA
+        </div>
+      </div>`;
+    return 0;
+  }
+
+  const progEstado = new Map(cams.map(c => [c.id, 'pending']));
   const progDesc   = new Map();
   let   completadas = 0;
 
-  // Render inicial — todas pendientes
   panel.style.display = '';
-  renderProgreso(panel, progEstado, progDesc, completadas, false);
+  renderProgreso(panel, cams, progEstado, progDesc, completadas, false);
 
-  // Analizar en paralelo, actualizar fila al terminar cada una
   await Promise.all(
-    MONITORED_CAMS.map(async (cam) => {
+    cams.map(async (cam) => {
       progEstado.set(cam.id, 'analyzing');
       updateFila(cam, 'analyzing', null);
-      updateCabecera(completadas, false);
+      updateCabecera(completadas, false, cams.length);
 
       const res = await analizarCamara(cam);
       completadas++;
@@ -126,13 +151,12 @@ async function lanzarConProgreso() {
       }
 
       updateFila(cam, progEstado.get(cam.id), progDesc.get(cam.id));
-      updateCabecera(completadas, completadas === MONITORED_CAMS.length);
+      updateCabecera(completadas, completadas === cams.length, cams.length);
     })
   );
 
   const incidencias = estadoActivo.size;
 
-  // Mostrar resumen final 1.5 s antes de transición a alertas
   await delay(1600);
   renderPanel();
 
@@ -140,24 +164,23 @@ async function lanzarConProgreso() {
 }
 
 /* ── Render inicial del panel de progreso ──────────────────── */
-function renderProgreso(panel, estados, descs, completadas, done) {
+function renderProgreso(panel, cams, estados, descs, completadas, done) {
   panel.innerHTML = `
     <div class="max-w-[1600px] mx-auto px-3 py-3">
       <div class="bg-white border border-[#e8e6dc] rounded-xl overflow-hidden shadow-sm">
-        ${cabecerHTML(completadas, done)}
+        ${cabecerHTML(completadas, done, cams.length)}
         <div class="px-4 pt-2 pb-3 text-xs text-[#6b6860]">
-          Comprobando ${MONITORED_CAMS.length} puntos kilométricos en TF-5 · Autopista del Norte
+          Comprobando ${cams.length} cámara${cams.length !== 1 ? 's' : ''} favorita${cams.length !== 1 ? 's' : ''}
         </div>
         <div id="ia-rows" class="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-6">
-          ${MONITORED_CAMS.map(cam => filaHTML(cam, estados.get(cam.id), descs.get(cam.id))).join('')}
+          ${cams.map(cam => filaHTML(cam, estados.get(cam.id), descs.get(cam.id))).join('')}
         </div>
       </div>
     </div>`;
 }
 
 /* ── HTML de la cabecera del panel ─────────────────────────── */
-function cabecerHTML(completadas, done) {
-  const total = MONITORED_CAMS.length;
+function cabecerHTML(completadas, done, total) {
   const spinnerOrCheck = done
     ? `<span class="text-green-500">✓</span>`
     : `<span style="display:inline-block;animation:spin 1s linear infinite" class="text-[#d97757]">⟳</span>`;
@@ -174,10 +197,10 @@ function cabecerHTML(completadas, done) {
 }
 
 /* ── Actualiza solo la cabecera (sin re-renderizar filas) ───── */
-function updateCabecera(completadas, done) {
+function updateCabecera(completadas, done, total) {
   const cab = document.getElementById('ia-cabecera');
   if (!cab) return;
-  cab.outerHTML = cabecerHTML(completadas, done);
+  cab.outerHTML = cabecerHTML(completadas, done, total);
 }
 
 /* ── HTML de una fila de cámara ────────────────────────────── */
