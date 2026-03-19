@@ -1,6 +1,6 @@
 /**
  * Tráfico Tenerife – App Logic
- * Estilos: Tailwind CSS v4 (compilado con Vite)
+ * Estilos: Tailwind CSS v4 (compilado con Vite) — paleta Anthropic
  */
 
 const REFRESH_INTERVAL_MS = 30000;
@@ -41,8 +41,8 @@ function init() {
 }
 
 /* ── Barra de controles ───────────────────────────────────── */
-const BTN_BASE   = 'bg-[#1e1e1e] border border-neutral-800 text-neutral-400 px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 hover:border-[#e8a000] hover:text-[#e8a000]';
-const BTN_ACTIVE = 'bg-[#e8a000]/15 border border-[#e8a000] text-[#e8a000] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5';
+const BTN_BASE   = 'bg-white border border-[#e8e6dc] text-[#6b6860] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 hover:border-[#d97757] hover:text-[#d97757] shadow-sm';
+const BTN_ACTIVE = 'bg-[#d97757]/10 border border-[#d97757] text-[#d97757] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 shadow-sm';
 
 function renderControls() {
   const wrap = document.createElement('div');
@@ -53,12 +53,12 @@ function renderControls() {
     <button id="btn-expand-all"   class="${BTN_BASE}">⊟ Colapsar todo</button>
     <button id="btn-scanner"      class="${BTN_BASE}">🔍 Explorar IDs</button>
     <div id="countdown-label"
-         class="ml-auto text-xs text-neutral-500 flex items-center gap-1.5">
+         class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5">
       Próx. actualización:
       <strong id="countdown-secs">${countdownRemain}</strong>s
-      <div class="w-20 h-0.5 bg-neutral-800 rounded-full overflow-hidden">
+      <div class="w-20 h-0.5 bg-[#e8e6dc] rounded-full overflow-hidden">
         <div id="countdown-fill"
-             class="h-full bg-[#e8a000] rounded-full"
+             class="h-full bg-[#d97757] rounded-full"
              style="width:100%; transition: width 1s linear;"></div>
       </div>
     </div>
@@ -78,20 +78,20 @@ function renderGroup(group) {
 
   const n = group.cameras.length;
   const header = document.createElement('div');
-  header.className = 'flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#1e1e1e] to-[#161616] border-l-4 border-[#e8a000] rounded-r-lg mb-3 cursor-pointer select-none transition-all hover:from-[#232323] hover:to-[#1a1a1a]';
+  header.className = 'flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#f5f3ee] to-[#faf9f5] border-l-4 border-[#d97757] rounded-r-lg mb-3 cursor-pointer select-none transition-all hover:from-[#f0ede3] hover:to-[#f5f3ee]';
   header.setAttribute('role', 'button');
   header.setAttribute('aria-expanded', 'true');
   header.setAttribute('data-section', group.id);
   header.innerHTML = `
     <span class="text-2xl min-w-7 text-center" aria-hidden="true">${group.icon}</span>
     <div class="flex-1 min-w-0">
-      <div class="text-[15px] font-bold text-neutral-100 tracking-wide">${group.name}</div>
-      <div class="text-[11px] text-neutral-500 mt-0.5">${group.subtitle}</div>
+      <div class="text-[15px] font-bold text-[#141413] tracking-wide">${group.name}</div>
+      <div class="text-[11px] text-[#6b6860] mt-0.5">${group.subtitle}</div>
     </div>
-    <span class="text-[11px] text-[#e8a000] bg-[#e8a000]/10 px-2.5 py-0.5 rounded-full border border-[#e8a000]/20 whitespace-nowrap shrink-0">
+    <span class="text-[11px] text-[#d97757] bg-[#d97757]/10 px-2.5 py-0.5 rounded-full border border-[#d97757]/20 whitespace-nowrap shrink-0">
       ${n} cámara${n !== 1 ? 's' : ''}
     </span>
-    <span class="text-neutral-500 text-sm shrink-0 transition-transform duration-300" data-toggle aria-hidden="true">▾</span>
+    <span class="text-[#b0aea5] text-sm shrink-0 transition-transform duration-300" data-toggle aria-hidden="true">▾</span>
   `;
   section.appendChild(header);
 
@@ -109,7 +109,7 @@ function renderGroup(group) {
 function makeCamCard(camId, camName) {
   const domId    = `cam_${domSafe(camId)}`;
   const card     = document.createElement('div');
-  card.className = 'bg-[#1a1a1a] border border-neutral-800 rounded-lg overflow-hidden transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-xl hover:border-[#e8a000] group';
+  card.className = 'bg-white border border-[#e8e6dc] rounded-xl overflow-hidden transition-all duration-200 cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-[#d97757] group';
   card.id = `card-${domId}`;
 
   const imgUrl   = getCameraUrl(camId);
@@ -117,7 +117,7 @@ function makeCamCard(camId, camName) {
   const nameEsc  = camName.replace(/'/g, "\\'");
 
   card.innerHTML = `
-    <div class="relative w-full aspect-[4/3] bg-[#0a0a0a] overflow-hidden"
+    <div class="relative w-full aspect-[4/3] bg-black overflow-hidden"
          role="button" aria-label="Ampliar ${camName}" tabindex="0">
 
       <!-- Skeleton shimmer -->
@@ -134,34 +134,34 @@ function makeCamCard(camId, camName) {
       <!-- Overlay de error -->
       <div id="err-${domId}"
            style="display:none"
-           class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/85 text-neutral-500 text-xs text-center p-3">
+           class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/85 text-[#b0aea5] text-xs text-center p-3">
         <span class="text-3xl">📷</span>
         <span>Señal no disponible</span>
-        <button class="bg-transparent border border-neutral-700 text-neutral-500 px-2 py-1 rounded text-[11px] cursor-pointer hover:border-[#e8a000] hover:text-[#e8a000] transition-all mt-1 whitespace-nowrap"
+        <button class="bg-transparent border border-[#6b6860] text-[#b0aea5] px-2 py-1 rounded text-[11px] cursor-pointer hover:border-[#d97757] hover:text-[#d97757] transition-all mt-1 whitespace-nowrap"
                 onclick="retryCam('${camIdEsc}',event)">Reintentar</button>
       </div>
 
       <!-- Badge EN VIVO -->
       <span id="live-${domId}"
-            class="absolute top-1.5 left-1.5 bg-black/65 text-green-500 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 tracking-wide">
-        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse block"></span>EN VIVO
+            class="absolute top-1.5 left-1.5 bg-black/65 text-green-400 text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 tracking-wide">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse block"></span>EN VIVO
       </span>
 
       <!-- Badge ampliar (hover) -->
-      <span class="absolute top-1.5 right-1.5 bg-black/70 text-[#e8a000] text-[10px] px-1.5 py-0.5 rounded hidden group-hover:flex items-center gap-1">
+      <span class="absolute top-1.5 right-1.5 bg-black/70 text-[#d97757] text-[10px] px-1.5 py-0.5 rounded hidden group-hover:flex items-center gap-1">
         🔍 Ampliar
       </span>
     </div>
 
     <!-- Footer de la tarjeta -->
-    <div class="px-2.5 py-2 flex items-center justify-between gap-2 border-t border-neutral-800">
-      <span class="text-xs font-semibold text-neutral-100 truncate flex-1"
+    <div class="px-2.5 py-2 flex items-center justify-between gap-2 border-t border-[#e8e6dc] bg-white">
+      <span class="text-xs font-semibold text-[#141413] truncate flex-1"
             title="${camName}">${camName}</span>
       <div class="flex gap-1 shrink-0">
-        <button class="bg-transparent border border-neutral-800 text-neutral-500 px-2 py-1 rounded text-[11px] cursor-pointer transition-all hover:border-[#e8a000] hover:text-[#e8a000]"
+        <button class="bg-transparent border border-[#e8e6dc] text-[#6b6860] px-2 py-1 rounded text-[11px] cursor-pointer transition-all hover:border-[#d97757] hover:text-[#d97757]"
                 title="Ver ampliada"
                 onclick="openModal('${camIdEsc}','${nameEsc}',event)">⛶</button>
-        <button class="bg-transparent border border-neutral-800 text-neutral-500 px-2 py-1 rounded text-[11px] cursor-pointer transition-all hover:border-[#e8a000] hover:text-[#e8a000]"
+        <button class="bg-transparent border border-[#e8e6dc] text-[#6b6860] px-2 py-1 rounded text-[11px] cursor-pointer transition-all hover:border-[#d97757] hover:text-[#d97757]"
                 title="Refrescar"
                 onclick="refreshSingleCam('${camIdEsc}',event)">↺</button>
       </div>
@@ -178,8 +178,8 @@ function makeCamCard(camId, camName) {
     if (skel) skel.style.display = 'none';
     if (err)  err.style.display  = 'none';
     if (live) live.innerHTML =
-      '<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse block"></span>EN VIVO';
-    if (live) live.className = live.className.replace('text-red-500', 'text-green-500');
+      '<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse block"></span>EN VIVO';
+    if (live) live.className = live.className.replace('text-red-400', 'text-green-400');
   });
 
   img.addEventListener('error', () => {
@@ -187,8 +187,8 @@ function makeCamCard(camId, camName) {
     if (skel) skel.style.display = 'none';
     if (err)  err.style.display  = 'flex';
     if (live) {
-      live.className = live.className.replace('text-green-500', 'text-red-500');
-      live.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-500 block"></span>SIN SEÑAL';
+      live.className = live.className.replace('text-green-400', 'text-red-400');
+      live.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400 block"></span>SIN SEÑAL';
     }
   });
 
@@ -275,8 +275,8 @@ function refreshSingleCam(camId, e) {
   if (err)  err.style.display  = 'none';
   img.classList.add('opacity-30');
   if (live) {
-    live.className = live.className.replace('text-red-500', 'text-green-500');
-    live.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse block"></span>EN VIVO';
+    live.className = live.className.replace('text-red-400', 'text-green-400');
+    live.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse block"></span>EN VIVO';
   }
   img.src = getCameraUrl(camId);
 }
@@ -359,18 +359,18 @@ function showScannerPanel(container) {
   panel.id = 'scanner-panel';
   panel.className = 'py-4';
   panel.innerHTML = `
-    <div class="bg-[#111] border border-neutral-800 rounded-lg p-5 mb-5">
-      <div class="text-lg font-bold text-[#e8a000] mb-2">🔍 Modo Escáner — IDs activos</div>
-      <div class="text-xs text-neutral-400 mb-3 break-all">
-        Probando IDs del <strong class="text-neutral-200">${SCAN_MIN}</strong>
-        al <strong class="text-neutral-200">${SCAN_MAX}</strong>
-        · URL: <code class="bg-white/5 px-1.5 py-0.5 rounded text-[#e8a000]">${CIC_BASE}camara-SERIE-{N}.jpg</code>
+    <div class="bg-white border border-[#e8e6dc] rounded-xl p-5 mb-5 shadow-sm">
+      <div class="text-lg font-bold text-[#d97757] mb-2">🔍 Modo Escáner — IDs activos</div>
+      <div class="text-xs text-[#6b6860] mb-3 break-all">
+        Probando IDs del <strong class="text-[#141413]">${SCAN_MIN}</strong>
+        al <strong class="text-[#141413]">${SCAN_MAX}</strong>
+        · URL: <code class="bg-[#f5f3ee] px-1.5 py-0.5 rounded text-[#d97757]">${CIC_BASE}camara-SERIE-{N}.jpg</code>
       </div>
-      <div class="bg-neutral-800 rounded-full h-1.5 overflow-hidden mb-2">
-        <div class="h-full w-0 bg-[#e8a000] rounded-full" id="scan-bar"
+      <div class="bg-[#e8e6dc] rounded-full h-1.5 overflow-hidden mb-2">
+        <div class="h-full w-0 bg-[#d97757] rounded-full" id="scan-bar"
              style="transition: width 0.3s ease;"></div>
       </div>
-      <div class="text-xs text-neutral-400" id="scan-status">Iniciando exploración…</div>
+      <div class="text-xs text-[#6b6860]" id="scan-status">Iniciando exploración…</div>
     </div>
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
          id="scanner-grid"></div>
@@ -472,10 +472,10 @@ function initScrollSpy() {
         const id = entry.target.id.replace('sec-', '');
         links.forEach(a => {
           const active = a.getAttribute('href') === `#sec-${id}`;
-          a.classList.toggle('text-[#e8a000]',     active);
-          a.classList.toggle('border-[#e8a000]',   active);
-          a.classList.toggle('text-neutral-400',   !active);
-          a.classList.toggle('border-transparent', !active);
+          a.classList.toggle('text-[#d97757]',       active);
+          a.classList.toggle('border-[#d97757]',     active);
+          a.classList.toggle('text-[#6b6860]',       !active);
+          a.classList.toggle('border-transparent',   !active);
         });
       }
     });

@@ -6,13 +6,17 @@
 @source "../js/app.js";
 @source "../js/cameras.js";
 
-/* ─── Colores personalizados ───────────────────────────────── */
+/* ─── Colores personalizados (paleta Anthropic) ────────────── */
 @theme {
-  --color-accent:       #e8a000;
-  --color-accent-hover: #ffb800;
-  --color-bg-dark:      #0d0d0d;
-  --color-bg-card:      #1a1a1a;
-  --color-bg-header:    #0a0a0a;
+  --color-accent:       #d97757;
+  --color-accent-hover: #c46644;
+  --color-bg-light:     #faf9f5;
+  --color-bg-card:      #ffffff;
+  --color-bg-muted:     #f5f3ee;
+  --color-bg-nav:       #f0ede3;
+  --color-border:       #e8e6dc;
+  --color-text:         #141413;
+  --color-text-muted:   #6b6860;
 }
 
 /* ─── Scrollbar oculta (no disponible en Tailwind) ─────────── */
@@ -28,7 +32,7 @@
 .cam-shimmer {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #1a1a1a 25%, #252525 50%, #1a1a1a 75%);
+  background: linear-gradient(90deg, #f5f3ee 25%, #e8e6dc 50%, #f5f3ee 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }

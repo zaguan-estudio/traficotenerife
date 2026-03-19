@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Cámaras de tráfico en tiempo real de la isla de Tenerife. TF-5, TF-1, TF-2 y túneles." />
-  <meta name="theme-color" content="#0d0d0d" />
+  <meta name="theme-color" content="#faf9f5" />
   <meta property="og:title"       content="Tráfico Tenerife – Cámaras en Directo" />
   <meta property="og:description" content="Estado del tráfico en tiempo real en Tenerife." />
   <meta property="og:type"        content="website" />
@@ -18,10 +18,10 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 
-<body class="bg-[#0d0d0d] text-neutral-100 min-h-screen font-sans leading-relaxed">
+<body class="bg-[#faf9f5] text-[#141413] min-h-screen font-sans leading-relaxed">
 
   <!-- ═══════ HEADER ═══════ -->
-  <header class="bg-[#0a0a0a] border-b-2 border-[#e8a000] sticky top-0 z-50 shadow-[0_2px_20px_rgba(0,0,0,0.8)]">
+  <header class="bg-white border-b-2 border-[#d97757] sticky top-0 z-50 shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
     <a href="index.html" aria-label="Tráfico Tenerife – Inicio" class="block">
       <img
         src="img/logo.svg"
@@ -33,10 +33,10 @@
             class="items-center gap-3.5 px-4 py-3 text-inherit no-underline">
         <span class="text-[2.2rem]" aria-hidden="true">🏠</span>
         <span class="flex flex-col">
-          <span class="text-2xl font-black tracking-widest text-neutral-100 uppercase leading-none">
+          <span class="text-2xl font-black tracking-widest text-[#141413] uppercase leading-none">
             Tráfico Tenerife
           </span>
-          <span class="text-[0.65rem] tracking-[3px] text-[#e8a000] uppercase mt-1">
+          <span class="text-[0.65rem] tracking-[3px] text-[#d97757] uppercase mt-1">
             Información del Estado del Tráfico
           </span>
         </span>
@@ -45,12 +45,12 @@
   </header>
 
   <!-- ═══════ TOP BAR ═══════ -->
-  <div class="bg-[#111] px-4 py-1.5 flex justify-between items-center text-xs text-neutral-500 border-b border-neutral-800 flex-wrap gap-1.5">
+  <div class="bg-[#f5f3ee] px-4 py-1.5 flex justify-between items-center text-xs text-[#6b6860] border-b border-[#e8e6dc] flex-wrap gap-1.5">
     <span>
       Fuente:
       <a href="https://cic.tenerife.es/web3/mosaico_cctv/camaras_trafico_w.html"
          target="_blank" rel="noopener"
-         class="text-[#e8a000] hover:underline">
+         class="text-[#d97757] hover:underline">
         CIC Tenerife – Cabildo Insular
       </a>
     </span>
@@ -62,16 +62,16 @@
   </div>
 
   <!-- ═══════ NAVEGACIÓN ═══════ -->
-  <nav class="bg-[#161616] border-b border-neutral-800 overflow-x-auto no-scrollbar"
+  <nav class="bg-white border-b border-[#e8e6dc] overflow-x-auto no-scrollbar"
        aria-label="Secciones de cámaras">
     <ul class="flex list-none px-2 gap-0.5 min-w-max" id="nav-list" role="list">
-      <li><a href="#sec-norte"       class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">TF-5 <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-norte"></span></a></li>
-      <li><a href="#sec-sur"         class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">TF-1 <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-sur"></span></a></li>
-      <li><a href="#sec-tf2"         class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">TF-2 <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-tf2"></span></a></li>
-      <li><a href="#sec-tun-litoral" class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">Litoral <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-litoral"></span></a></li>
-      <li><a href="#sec-tun-vega"    class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">Vega <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-vega"></span></a></li>
-      <li><a href="#sec-tun-bicho"   class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">Bicho <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-bicho"></span></a></li>
-      <li><a href="#sec-tun-guincho" class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-neutral-400 no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#e8a000] hover:border-[#e8a000]">Guincho <span class="bg-neutral-800 text-neutral-500 text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-guincho"></span></a></li>
+      <li><a href="#sec-norte"       class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">TF-5 <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-norte"></span></a></li>
+      <li><a href="#sec-sur"         class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">TF-1 <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-sur"></span></a></li>
+      <li><a href="#sec-tf2"         class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">TF-2 <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tf2"></span></a></li>
+      <li><a href="#sec-tun-litoral" class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">Litoral <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-litoral"></span></a></li>
+      <li><a href="#sec-tun-vega"    class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">Vega <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-vega"></span></a></li>
+      <li><a href="#sec-tun-bicho"   class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">Bicho <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-bicho"></span></a></li>
+      <li><a href="#sec-tun-guincho" class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">Guincho <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-guincho"></span></a></li>
     </ul>
   </nav>
 
@@ -79,7 +79,7 @@
   <main id="main-content" class="max-w-[1600px] mx-auto px-3 pb-10"
         role="main" aria-label="Cámaras de tráfico">
     <noscript>
-      <p class="text-neutral-400 p-6 text-center">
+      <p class="text-[#6b6860] p-6 text-center">
         Esta aplicación requiere JavaScript para mostrar las cámaras de tráfico.
       </p>
     </noscript>
@@ -88,42 +88,42 @@
   <!-- ═══════ MODAL / LIGHTBOX ═══════ -->
   <div id="modal-overlay"
        style="display:none"
-       class="fixed inset-0 bg-black/90 z-[1000] flex items-center justify-center p-5"
+       class="fixed inset-0 bg-[#141413]/80 z-[1000] flex items-center justify-center p-5"
        role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="bg-[#111] border border-neutral-800 rounded-lg max-w-3xl w-full overflow-hidden shadow-[0_10px_60px_rgba(0,0,0,0.8)] modal-animate">
+    <div class="bg-white border border-[#e8e6dc] rounded-xl max-w-3xl w-full overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.2)] modal-animate">
 
-      <div class="flex items-center justify-between px-4 py-3 border-b border-neutral-800 bg-[#161616]">
-        <span class="text-sm font-semibold text-neutral-100" id="modal-title">Cámara</span>
-        <button class="bg-transparent border-0 text-neutral-500 text-xl cursor-pointer p-1 leading-none hover:text-neutral-100 transition-colors"
+      <div class="flex items-center justify-between px-4 py-3 border-b border-[#e8e6dc] bg-[#f5f3ee]">
+        <span class="text-sm font-semibold text-[#141413]" id="modal-title">Cámara</span>
+        <button class="bg-transparent border-0 text-[#6b6860] text-xl cursor-pointer p-1 leading-none hover:text-[#141413] transition-colors"
                 id="modal-close" aria-label="Cerrar">✕</button>
       </div>
 
-      <div class="relative">
+      <div class="relative bg-black">
         <img class="w-full aspect-video object-contain bg-black block"
              id="modal-img" src="" alt="Vista ampliada" />
       </div>
 
-      <div class="px-4 py-2.5 flex items-center justify-between text-xs text-neutral-500 border-t border-neutral-800 flex-wrap gap-2">
+      <div class="px-4 py-2.5 flex items-center justify-between text-xs text-[#6b6860] border-t border-[#e8e6dc] flex-wrap gap-2">
         <span>
           <a id="modal-source-link" href="#" target="_blank" rel="noopener"
-             class="text-[#e8a000] hover:underline">CIC Tenerife</a>
+             class="text-[#d97757] hover:underline">CIC Tenerife</a>
         </span>
-        <button class="bg-[#e8a000] text-black border-0 px-3 py-1.5 rounded text-xs font-semibold cursor-pointer hover:bg-[#ffb800] transition-colors"
+        <button class="bg-[#d97757] text-white border-0 px-3 py-1.5 rounded text-xs font-semibold cursor-pointer hover:bg-[#c46644] transition-colors"
                 id="modal-refresh-btn">↺ Actualizar imagen</button>
       </div>
     </div>
   </div>
 
   <!-- ═══════ VOLVER ARRIBA ═══════ -->
-  <button class="fixed bottom-5 right-5 bg-[#e8a000] text-black border-0 w-10 h-10 rounded-full text-base cursor-pointer flex items-center justify-center shadow-[0_4px_16px_rgba(232,160,0,0.4)] opacity-0 pointer-events-none transition-opacity duration-300 z-50"
+  <button class="fixed bottom-5 right-5 bg-[#d97757] text-white border-0 w-10 h-10 rounded-full text-base cursor-pointer flex items-center justify-center shadow-[0_4px_16px_rgba(217,119,87,0.4)] opacity-0 pointer-events-none transition-opacity duration-300 z-50"
           id="back-to-top" aria-label="Volver al inicio">▲</button>
 
   <!-- ═══════ FOOTER ═══════ -->
-  <footer class="bg-[#0a0a0a] border-t border-neutral-800 py-6 px-4 text-center text-xs text-neutral-500 leading-loose">
+  <footer class="bg-white border-t border-[#e8e6dc] py-6 px-4 text-center text-xs text-[#6b6860] leading-loose">
     <p>
       Imágenes proporcionadas por el
       <a href="https://cic.tenerife.es" target="_blank" rel="noopener"
-         class="text-[#e8a000] hover:underline">
+         class="text-[#d97757] hover:underline">
         Centro de Información de Carreteras (CIC)
       </a>
       · Área de Carreteras · Cabildo Insular de Tenerife
