@@ -5,12 +5,9 @@
  * - lanzarConProgreso()  → análisis manual con UI de progreso en tiempo real
  */
 
-const GEMINI_API_KEY  = 'AIzaSyDL-h5BlwG091qwHaoqnBanIUIXJQTMOR4';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-// Proxy propio con CORS headers — ver proxy/worker.js para instrucciones de despliegue.
-// Formato: https://TU-WORKER.workers.dev  (sin barra final)
-const PROXY_BASE = '';
+// URL del Cloudflare Worker — ver proxy/worker.js y proxy/wrangler.toml
+// Formato: https://trafico-tenerife.TU-USUARIO.workers.dev  (sin barra final)
+const WORKER_BASE = '';
 
 const MONITORED_CAMS = [
   { id: '2701002-516', name: 'TF-5 · pk A1', road: 'TF-5' },
@@ -28,14 +25,6 @@ const MONITORED_CAMS = [
   { id: '2701002-528', name: 'TF-5 · pk A7', road: 'TF-5' },
 ];
 
-const PROMPT = `Analiza esta imagen de una cámara de tráfico en Tenerife, España.
-Responde ÚNICAMENTE con un objeto JSON válido (sin markdown, sin texto extra):
-{"estado":"normal|denso|colapso","descripcion":"frase corta máx 12 palabras"}
-Criterios:
-- normal: circulación fluida, sin retenciones visibles
-- denso: tráfico lento o congestión moderada
-- colapso: retención importante, vehículos parados o muy lentos`;
-
 /* ── Estado activo de alertas: Map<camId, alertData> ───────── */
 const estadoActivo = new Map();
 
@@ -43,66 +32,25 @@ const estadoActivo = new Map();
 const domId = id => id.replace(/-/g, '_');
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
-/* ── Captura de imagen como base64 a través del proxy ─────── */
-async function fetchImageBase64(camId) {
-  const t   = Date.now();
-  const url = PROXY_BASE
-    ? `${PROXY_BASE}/camara-${camId}.jpg?t=${t}`          // proxy propio (CORS OK)
-    : `https://cic.tenerife.es/e-Traffic3/data/camara-${camId}.jpg?t=${t}`;
-
-  const resp = await fetch(url, { signal: AbortSignal.timeout(12000) });
-  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  const blob = await resp.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-    reader.onerror   = reject;
-    reader.readAsDataURL(blob);
-  });
-}
-
-/* ── Gemini API — imagen como base64 ──────────────────────── */
-async function analizarConAPI(base64) {
-  const body = JSON.stringify({
-    contents: [{
-      parts: [
-        { text: PROMPT },
-        { inlineData: { mimeType: 'image/jpeg', data: base64 } }
-      ]
-    }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 120 }
-  });
-  const resp = await fetch(GEMINI_ENDPOINT, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-    signal: AbortSignal.timeout(25000)
-  });
-  if (!resp.ok) {
-    const err = await resp.json().catch(() => ({}));
-    throw new Error(`Gemini ${resp.status}: ${err?.error?.message ?? resp.statusText}`);
-  }
-  const data  = await resp.json();
-  const text  = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-  const clean = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
-  return JSON.parse(clean);
-}
-
-/* ── Análisis de una cámara ────────────────────────────────── */
+/* ── Análisis de una cámara via Worker ─────────────────────── */
 async function analizarCamara(cam) {
-  let base64;
-  try {
-    base64 = await fetchImageBase64(cam.id);
-  } catch (e) {
-    console.warn(`[alertas] Imagen no disponible (${cam.name}):`, e.message);
+  if (!WORKER_BASE) {
+    console.warn('[alertas] WORKER_BASE no configurado — ponla en alertas.js');
     return null;
   }
   try {
-    const result = await analizarConAPI(base64);
-    if (result?.estado) return result;
-    throw new Error('Respuesta sin campo estado');
+    const resp = await fetch(`${WORKER_BASE}/analizar`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ camId: cam.id }),
+      signal:  AbortSignal.timeout(35000),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error ?? `HTTP ${resp.status}`);
+    if (!data?.estado) throw new Error('Respuesta sin campo estado');
+    return data;
   } catch (e) {
-    console.warn(`[alertas] Error Gemini (${cam.name}):`, e.message);
+    console.warn(`[alertas] Error (${cam.name}):`, e.message);
     return null;
   }
 }
