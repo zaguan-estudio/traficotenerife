@@ -116,8 +116,13 @@ async function handleAnalizar(request, env) {
     );
     if (!imgResp.ok) throw new Error(`HTTP ${imgResp.status}`);
     const buffer = await imgResp.arrayBuffer();
-    // btoa sobre ArrayBuffer (disponible en Workers runtime)
-    imageBase64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    // btoa en chunks para evitar stack overflow con imágenes grandes
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    imageBase64 = btoa(binary);
   } catch (e) {
     return jsonResp({ error: `No se pudo obtener la imagen: ${e.message}` }, 502);
   }
@@ -152,8 +157,15 @@ async function handleAnalizar(request, env) {
 
     const data  = await geminiResp.json();
     const text  = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    // Eliminar markdown y extraer el primer bloque JSON válido
     const clean = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
-    return jsonResp(JSON.parse(clean));
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error(`Respuesta no parseable: ${clean.slice(0, 80)}`);
+    const parsed = JSON.parse(match[0]);
+    if (!['normal', 'denso', 'colapso'].includes(parsed.estado)) {
+      throw new Error(`estado desconocido: ${parsed.estado}`);
+    }
+    return jsonResp(parsed);
 
   } catch (e) {
     return jsonResp({ error: `Error Gemini: ${e.message}` }, 502);
