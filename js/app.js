@@ -78,20 +78,19 @@ function renderGroup(group) {
 
   const n = group.cameras.length;
   const header = document.createElement('div');
-  header.className = 'flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#f5f3ee] to-[#faf9f5] border-l-4 border-[#d97757] rounded-r-lg mb-3 cursor-pointer select-none transition-all hover:from-[#f0ede3] hover:to-[#f5f3ee]';
+  header.className = 'flex items-center gap-3 px-5 py-4 bg-[#e5e0d5] border border-[#141413] rounded-2xl mb-3 cursor-pointer select-none transition-all hover:bg-[#dedad0]';
   header.setAttribute('role', 'button');
   header.setAttribute('aria-expanded', 'true');
   header.setAttribute('data-section', group.id);
   header.innerHTML = `
-    <span class="text-2xl min-w-7 text-center" aria-hidden="true">${group.icon}</span>
     <div class="flex-1 min-w-0">
       <div class="text-[15px] font-bold text-[#141413] tracking-wide">${group.name}</div>
       <div class="text-[11px] text-[#6b6860] mt-0.5">${group.subtitle}</div>
     </div>
-    <span class="text-[11px] text-[#d97757] bg-[#d97757]/10 px-2.5 py-0.5 rounded-full border border-[#d97757]/20 whitespace-nowrap shrink-0">
+    <span class="text-[11px] text-[#141413] bg-[#141413]/10 px-2.5 py-0.5 rounded-full border border-[#141413]/20 whitespace-nowrap shrink-0">
       ${n} cámara${n !== 1 ? 's' : ''}
     </span>
-    <span class="text-[#b0aea5] text-sm shrink-0 transition-transform duration-300" data-toggle aria-hidden="true">▾</span>
+    <span class="text-[#6b6860] text-sm shrink-0 transition-transform duration-300" data-toggle aria-hidden="true">▾</span>
   `;
   section.appendChild(header);
 
