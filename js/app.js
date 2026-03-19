@@ -4,8 +4,6 @@
  */
 
 const REFRESH_INTERVAL_MS = 30000;
-const SCAN_MIN = 1;
-const SCAN_MAX = 100;
 
 let refreshTimer    = null;
 let countdownTimer  = null;
@@ -13,7 +11,6 @@ let countdownRemain = REFRESH_INTERVAL_MS / 1000;
 let autoRefreshOn   = true;
 let openModalCamId  = null;
 let allExpanded     = true;
-let scannerMode     = false;
 
 const $ = id => document.getElementById(id);
 
@@ -44,29 +41,75 @@ function init() {
 const BTN_BASE   = 'bg-white border border-[#e8e6dc] text-[#6b6860] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 hover:border-[#d97757] hover:text-[#d97757] shadow-sm';
 const BTN_ACTIVE = 'bg-[#d97757]/10 border border-[#d97757] text-[#d97757] px-3.5 py-1.5 rounded text-xs cursor-pointer transition-all flex items-center gap-1.5 shadow-sm';
 
+const GEAR_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
+
 function renderControls() {
   const wrap = document.createElement('div');
-  wrap.className = 'flex items-center gap-2.5 py-3 flex-wrap';
-  wrap.innerHTML = `
+  wrap.className = 'py-3';
+
+  // Gear bar: visible only on mobile
+  const mobileBar = document.createElement('div');
+  mobileBar.id = 'controls-mobile-bar';
+  mobileBar.className = 'flex items-center';
+  mobileBar.innerHTML = `
+    <button id="btn-settings-toggle" class="${BTN_BASE}"
+            aria-expanded="false" aria-controls="settings-panel">
+      ${GEAR_SVG} Ajustes
+    </button>
+  `;
+
+  // Settings panel: collapsible on mobile, always visible on desktop
+  const panel = document.createElement('div');
+  panel.id = 'settings-panel';
+  panel.innerHTML = `
     <button id="btn-auto-refresh" class="${BTN_ACTIVE}">↺ Auto-actualizar</button>
     <button id="btn-refresh-now"  class="${BTN_BASE}">⟳ Actualizar ahora</button>
     <button id="btn-expand-all"   class="${BTN_BASE}">⊟ Colapsar todo</button>
-    <button id="btn-scanner"      class="${BTN_BASE}">🔍 Explorar IDs</button>
-    <div id="countdown-label"
-         class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5">
+    <div id="countdown-label" class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5">
       Próx. actualización:
       <strong id="countdown-secs">${countdownRemain}</strong>s
       <div class="w-20 h-0.5 bg-[#e8e6dc] rounded-full overflow-hidden">
-        <div id="countdown-fill"
-             class="h-full bg-[#d97757] rounded-full"
+        <div id="countdown-fill" class="h-full bg-[#d97757] rounded-full"
              style="width:100%; transition: width 1s linear;"></div>
       </div>
     </div>
   `;
-  wrap.querySelector('#btn-auto-refresh').addEventListener('click', toggleAutoRefresh);
-  wrap.querySelector('#btn-refresh-now').addEventListener('click', refreshAllCams);
-  wrap.querySelector('#btn-expand-all').addEventListener('click', toggleAllSections);
-  wrap.querySelector('#btn-scanner').addEventListener('click', toggleScannerMode);
+
+  wrap.appendChild(mobileBar);
+  wrap.appendChild(panel);
+
+  let settingsOpen = false;
+  const mq = window.matchMedia('(min-width: 768px)');
+
+  function applyLayout(isDesktop) {
+    if (isDesktop) {
+      mobileBar.style.display = 'none';
+      panel.style.cssText = 'display:flex; flex-wrap:wrap; gap:10px; align-items:center;';
+      panel.querySelector('#countdown-label').style.display = 'flex';
+    } else {
+      mobileBar.style.display = 'flex';
+      if (settingsOpen) {
+        panel.style.cssText = 'display:flex; flex-direction:column; gap:8px; margin-top:8px; padding:12px; background:white; border:1px solid #e8e6dc; border-radius:12px;';
+        panel.querySelector('#countdown-label').style.display = 'none';
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+  }
+
+  applyLayout(mq.matches);
+  mq.addEventListener('change', e => applyLayout(e.matches));
+
+  mobileBar.querySelector('#btn-settings-toggle').addEventListener('click', () => {
+    settingsOpen = !settingsOpen;
+    mobileBar.querySelector('#btn-settings-toggle').setAttribute('aria-expanded', String(settingsOpen));
+    applyLayout(mq.matches);
+  });
+
+  panel.querySelector('#btn-auto-refresh').addEventListener('click', toggleAutoRefresh);
+  panel.querySelector('#btn-refresh-now').addEventListener('click', refreshAllCams);
+  panel.querySelector('#btn-expand-all').addEventListener('click', toggleAllSections);
+
   return wrap;
 }
 
@@ -253,7 +296,6 @@ function toggleAllSections() {
 
 /* ── Refresco de cámaras ──────────────────────────────────── */
 function refreshAllCams() {
-  if (scannerMode) return;
   CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.id)));
   resetCountdown();
   if (openModalCamId !== null) {
@@ -328,95 +370,6 @@ function toggleAutoRefresh() {
   }
 }
 
-/* ── MODO ESCÁNER ─────────────────────────────────────────── */
-let scanAbortController = null;
-
-function toggleScannerMode() {
-  scannerMode = !scannerMode;
-  const main = $('main-content');
-  const btn  = $('btn-scanner');
-  if (!main) return;
-
-  if (scannerMode) {
-    document.querySelectorAll('.camera-section').forEach(s => s.style.display = 'none');
-    clearInterval(refreshTimer);
-    clearInterval(countdownTimer);
-    if (btn) { btn.className = BTN_ACTIVE; btn.textContent = '✕ Cerrar escáner'; }
-    showScannerPanel(main);
-  } else {
-    if (scanAbortController) { scanAbortController.abort(); scanAbortController = null; }
-    const panel = $('scanner-panel');
-    if (panel) panel.remove();
-    document.querySelectorAll('.camera-section').forEach(s => s.style.display = '');
-    if (btn) { btn.className = BTN_BASE; btn.textContent = '🔍 Explorar IDs'; }
-    resetCountdown();
-  }
-}
-
-function showScannerPanel(container) {
-  const panel = document.createElement('div');
-  panel.id = 'scanner-panel';
-  panel.className = 'py-4';
-  panel.innerHTML = `
-    <div class="bg-white border border-[#e8e6dc] rounded-xl p-5 mb-5 shadow-sm">
-      <div class="text-lg font-bold text-[#d97757] mb-2">🔍 Modo Escáner — IDs activos</div>
-      <div class="text-xs text-[#6b6860] mb-3 break-all">
-        Probando IDs del <strong class="text-[#141413]">${SCAN_MIN}</strong>
-        al <strong class="text-[#141413]">${SCAN_MAX}</strong>
-        · URL: <code class="bg-[#f5f3ee] px-1.5 py-0.5 rounded text-[#d97757]">${CIC_BASE}camara-SERIE-{N}.jpg</code>
-      </div>
-      <div class="bg-[#e8e6dc] rounded-full h-1.5 overflow-hidden mb-2">
-        <div class="h-full w-0 bg-[#d97757] rounded-full" id="scan-bar"
-             style="transition: width 0.3s ease;"></div>
-      </div>
-      <div class="text-xs text-[#6b6860]" id="scan-status">Iniciando exploración…</div>
-    </div>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
-         id="scanner-grid"></div>
-  `;
-  container.appendChild(panel);
-  runScanner();
-}
-
-async function runScanner() {
-  scanAbortController = new AbortController();
-  const grid     = $('scanner-grid');
-  const statusEl = $('scan-status');
-  const barEl    = $('scan-bar');
-  const total    = SCAN_MAX - SCAN_MIN + 1;
-  let   found    = 0;
-
-  for (let n = SCAN_MIN; n <= SCAN_MAX; n++) {
-    if (scanAbortController.signal.aborted) break;
-    const pct = Math.round(((n - SCAN_MIN) / total) * 100);
-    if (barEl)    barEl.style.width = pct + '%';
-    if (statusEl) statusEl.textContent =
-      `Probando ID ${n}/${SCAN_MAX} · ${found} cámara${found !== 1 ? 's' : ''} encontrada${found !== 1 ? 's' : ''}`;
-
-    const ok = await probeImage(getCameraUrl(n), scanAbortController.signal);
-    if (ok && grid) {
-      found++;
-      grid.appendChild(makeCamCard(String(n), `ID: ${n}`));
-    }
-  }
-
-  if (barEl)    barEl.style.width = '100%';
-  if (statusEl && !scanAbortController.signal.aborted)
-    statusEl.textContent =
-      `Exploración completa: ${found} cámara${found !== 1 ? 's' : ''} activa${found !== 1 ? 's' : ''} de ${total} IDs probados.`;
-}
-
-function probeImage(url, signal) {
-  return new Promise(resolve => {
-    if (signal.aborted) return resolve(false);
-    const img  = new Image();
-    const done = ok => { img.onload = img.onerror = null; resolve(ok); };
-    img.onload  = () => done(true);
-    img.onerror = () => done(false);
-    signal.addEventListener('abort', () => done(false), { once: true });
-    img.src = url;
-  });
-}
 
 /* ── Modal / lightbox ─────────────────────────────────────── */
 function openModal(camId, camName, e) {
