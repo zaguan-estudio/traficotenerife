@@ -127,10 +127,10 @@ async function handleAnalizar(request, env) {
     return jsonResp({ error: `No se pudo obtener la imagen: ${e.message}` }, 502);
   }
 
-  // 2. Enviar a Gemini 2.0 Flash
+  // 2. Enviar a Gemini 2.0 Flash Lite
   try {
     const geminiResp = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
       {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
