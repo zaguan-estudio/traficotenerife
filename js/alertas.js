@@ -9,14 +9,19 @@ const GEMINI_API_KEY  = 'AIzaSyDL-h5BlwG091qwHaoqnBanIUIXJQTMOR4';
 const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 const MONITORED_CAMS = [
-  { id: '2701001-26',   name: 'TF-5 · Norte 7',      road: 'TF-5'    },
-  { id: '2701002-516',  name: 'TF-5 · pk A1',         road: 'TF-5'    },
-  { id: '2701002-534',  name: 'TF-5 · pk A10',        road: 'TF-5'    },
-  { id: '2701001-49',   name: 'TF-1 · Sur 1',         road: 'TF-1'    },
-  { id: '2701002-1014', name: 'TF-1 · pk A4',         road: 'TF-1'    },
-  { id: '2701002-211',  name: 'TF-2 · Sta. María 1',  road: 'TF-2'    },
-  { id: '2701001-39',   name: 'TF-2 · Chumberas 1',   road: 'TF-2'    },
-  { id: '2701002-911',  name: 'Vía Litoral · 1',      road: 'Litoral' },
+  { id: '2701002-516', name: 'TF-5 · pk A1', road: 'TF-5' },
+  { id: '2701002-517', name: 'TF-5 · pk B1', road: 'TF-5' },
+  { id: '2701002-519', name: 'TF-5 · pk A2', road: 'TF-5' },
+  { id: '2701002-520', name: 'TF-5 · pk B2', road: 'TF-5' },
+  { id: '2701002-521', name: 'TF-5 · pk A3', road: 'TF-5' },
+  { id: '2701002-522', name: 'TF-5 · pk B3', road: 'TF-5' },
+  { id: '2701002-523', name: 'TF-5 · pk A4', road: 'TF-5' },
+  { id: '2701002-525', name: 'TF-5 · pk B4', road: 'TF-5' },
+  { id: '2701002-524', name: 'TF-5 · pk A5', road: 'TF-5' },
+  { id: '2701002-527', name: 'TF-5 · pk B5', road: 'TF-5' },
+  { id: '2701002-526', name: 'TF-5 · pk A6', road: 'TF-5' },
+  { id: '2701002-529', name: 'TF-5 · pk B6', road: 'TF-5' },
+  { id: '2701002-528', name: 'TF-5 · pk A7', road: 'TF-5' },
 ];
 
 const PROMPT = `Analiza esta imagen de una cámara de tráfico en Tenerife, España.
@@ -181,7 +186,7 @@ function renderProgreso(panel, estados, descs, completadas, done) {
       <div class="bg-white border border-[#e8e6dc] rounded-xl overflow-hidden shadow-sm">
         ${cabecerHTML(completadas, done)}
         <div class="px-4 pt-2 pb-3 text-xs text-[#6b6860]">
-          Comprobando ${MONITORED_CAMS.length} puntos estratégicos en TF-5, TF-1, TF-2 y Vía Litoral
+          Comprobando ${MONITORED_CAMS.length} puntos kilométricos en TF-5 · Autopista del Norte
         </div>
         <div id="ia-rows" class="px-4 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-y-1 gap-x-6">
           ${MONITORED_CAMS.map(cam => filaHTML(cam, estados.get(cam.id), descs.get(cam.id))).join('')}
