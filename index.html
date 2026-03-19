@@ -14,6 +14,11 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📷</text></svg>" />
   <link rel="manifest" href="manifest.json" />
 
+  <!-- DM Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;400&display=swap" rel="stylesheet" />
+
   <!-- Tailwind CSS (compilado por Vite) -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -21,26 +26,30 @@
 <body class="bg-[#faf9f5] text-[#141413] min-h-screen font-sans leading-relaxed">
 
   <!-- ═══════ HEADER ═══════ -->
-  <header class="bg-white border-b-2 border-[#d97757] sticky top-0 z-50 shadow-[0_2px_20px_rgba(0,0,0,0.06)]">
-    <a href="index.html" aria-label="Tráfico Tenerife – Inicio" class="block">
-      <img
-        src="img/logo.svg"
-        alt="Tráfico Tenerife · Información del Estado del Tráfico"
-        class="block w-full max-h-24 object-cover object-left"
-        onerror="this.style.display='none'; document.getElementById('logo-fallback').style.display='flex';"
-      />
-      <span id="logo-fallback" style="display:none"
-            class="items-center gap-3.5 px-4 py-3 text-inherit no-underline">
-        <span class="text-[2.2rem]" aria-hidden="true">🏠</span>
-        <span class="flex flex-col">
-          <span class="text-2xl font-black tracking-widest text-[#141413] uppercase leading-none">
-            Tráfico Tenerife
-          </span>
-          <span class="text-[0.65rem] tracking-[3px] text-[#d97757] uppercase mt-1">
-            Información del Estado del Tráfico
-          </span>
-        </span>
-      </span>
+  <header class="bg-white border-b border-[#e8e6dc] sticky top-0 z-50 shadow-[0_1px_12px_rgba(0,0,0,0.05)]">
+    <a href="index.html" aria-label="Tráfico Tenerife – Inicio" class="block px-6 py-5">
+      <div style="display:inline-flex; align-items:center; gap:28px;">
+
+        <!-- Icono -->
+        <svg width="58" height="52" viewBox="0 0 58 52" fill="none" aria-hidden="true">
+          <line x1="0" y1="6"  x2="50" y2="6"  stroke="#D3D1C7" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="0" y1="26" x2="50" y2="26" stroke="#1D9E75" stroke-width="2.5" stroke-linecap="round"/>
+          <polyline points="41,18 50,26 41,34" fill="none" stroke="#1D9E75" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <line x1="0" y1="46" x2="50" y2="46" stroke="#D3D1C7" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="30" cy="6"  r="3.5" fill="#1D9E75"/>
+          <circle cx="14" cy="46" r="2.5" fill="#D3D1C7"/>
+        </svg>
+
+        <!-- Texto -->
+        <div style="display:flex; flex-direction:column;">
+          <span style="font-family:'DM Sans',sans-serif; font-size:46px; font-weight:200; letter-spacing:0.22em; line-height:1; color:#2C2C2A; white-space:nowrap;">TRÁFICO</span>
+          <div style="margin:9px 0 8px; height:1px; background:rgba(0,0,0,0.15); position:relative;">
+            <div style="position:absolute; left:0; top:0; width:36px; height:1px; background:#1D9E75;"></div>
+          </div>
+          <span style="font-family:'DM Sans',sans-serif; font-size:13px; font-weight:400; letter-spacing:0.52em; line-height:1; color:rgba(0,0,0,0.4); white-space:nowrap;">TENERIFE</span>
+        </div>
+
+      </div>
     </a>
   </header>
 
