@@ -49,8 +49,7 @@ const delay = ms => new Promise(r => setTimeout(r, ms));
 /* ── Análisis de una cámara via Worker ─────────────────────── */
 async function analizarCamara(cam) {
   if (!WORKER_BASE) {
-    console.warn('[alertas] WORKER_BASE no configurado — ponla en alertas.js');
-    return null;
+    return { _error: 'WORKER_BASE no configurado' };
   }
   try {
     const resp = await fetch(`${WORKER_BASE}/analizar`, {
@@ -65,7 +64,7 @@ async function analizarCamara(cam) {
     return data;
   } catch (e) {
     console.warn(`[alertas] Error (${cam.name}):`, e.message);
-    return null;
+    return { _error: e.message };
   }
 }
 
@@ -141,9 +140,9 @@ async function lanzarConProgreso() {
       const res = await analizarCamara(cam);
       completadas++;
 
-      if (!res) {
+      if (res._error) {
         progEstado.set(cam.id, 'error');
-        progDesc.set(cam.id, 'sin respuesta');
+        progDesc.set(cam.id, res._error);
       } else {
         progEstado.set(cam.id, res.estado);
         progDesc.set(cam.id, res.descripcion);
@@ -156,9 +155,13 @@ async function lanzarConProgreso() {
   );
 
   const incidencias = estadoActivo.size;
+  const hayErrores = [...progEstado.values()].some(e => e === 'error');
 
-  await delay(1600);
-  renderPanel();
+  // Si hay errores, mantener el panel de progreso abierto para depurar
+  if (!hayErrores) {
+    await delay(1600);
+    renderPanel();
+  }
 
   return incidencias;
 }
@@ -235,9 +238,9 @@ function filaContenido(cam, estado, desc) {
               <span class="font-semibold text-red-700">${cam.name}</span>
               ${descSpan ? `<span class="truncate text-red-600 opacity-70">${desc}</span>` : ''}`;
     case 'error':
-      return `<span class="shrink-0 w-4 text-[#b0aea5]">✕</span>
+      return `<span class="shrink-0 w-4 text-red-400">✕</span>
               <span class="text-[#b0aea5]">${cam.name}</span>
-              <span class="text-[#c8c6c0] italic">sin señal</span>`;
+              <span class="text-red-400 italic font-mono">${desc || 'sin respuesta'}</span>`;
     default:
       return '';
   }
