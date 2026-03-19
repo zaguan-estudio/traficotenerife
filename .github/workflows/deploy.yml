@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - claude/tenerife-traffic-cameras-NRzmi   # rama de desarrollo actual
+
+  # Permite lanzarlo manualmente desde la pestaña Actions
+  workflow_dispatch:
+
+# Permisos necesarios para desplegar en GitHub Pages
+permissions:
+  contents: read
+  pages:    write
+  id-token: write
+
+# Evita deploys simultáneos
+concurrency:
+  group:              pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build con Vite + Tailwind
+        run: npm run build
+
+      - name: Subir artefacto para Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy a GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
