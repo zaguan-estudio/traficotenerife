@@ -304,30 +304,33 @@ async function lanzarDeteccionIA() {
   const btn = $('btn-detectar-ia');
   if (!btn || btn.disabled) return;
 
-  // Estado de carga
   btn.disabled  = true;
   btn.className = BTN_ACTIVE + ' opacity-75 cursor-not-allowed';
   btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite">⟳</span> Analizando…';
 
   try {
-    await window.alertas?.analizarTodas?.();
+    const incidencias = await window.alertas.lanzarConProgreso();
+    btn.disabled  = false;
 
-    // Feedback visual según resultado
-    const hayAlertas = document.querySelector('#alertas-panel [class*="border-red"], #alertas-panel [class*="border-amber"]');
-    btn.className = hayAlertas ? BTN_ACTIVE : 'bg-green-50 border border-green-300 text-green-700 px-3.5 py-1.5 rounded text-xs flex items-center gap-1.5 shadow-sm';
-    btn.innerHTML = hayAlertas ? '⚠️ Ver alertas' : '✓ Sin incidencias';
+    if (incidencias > 0) {
+      btn.className = BTN_ACTIVE;
+      btn.innerHTML = `⚠️ ${incidencias} alerta${incidencias > 1 ? 's' : ''}`;
+    } else {
+      btn.className = 'bg-green-50 border border-green-300 text-green-700 px-3.5 py-1.5 rounded text-xs cursor-pointer flex items-center gap-1.5 shadow-sm';
+      btn.innerHTML = '✓ Sin incidencias';
+    }
   } catch {
+    btn.disabled  = false;
     btn.className = BTN_BASE;
     btn.innerHTML = '🔍 Detectar atascos con IA';
-  } finally {
-    btn.disabled = false;
-    setTimeout(() => {
-      if (btn) {
-        btn.className = BTN_BASE;
-        btn.innerHTML = '🔍 Detectar atascos con IA';
-      }
-    }, 4000);
   }
+
+  setTimeout(() => {
+    if (btn) {
+      btn.className = BTN_BASE;
+      btn.innerHTML = '🔍 Detectar atascos con IA';
+    }
+  }, 5000);
 }
 
 /* ── Refresco de cámaras ──────────────────────────────────── */
