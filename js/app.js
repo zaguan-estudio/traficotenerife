@@ -35,6 +35,17 @@ function init() {
   updateNavBadges();
   initSectionCollapse();
   resetCountdown();
+  initStickyNav();
+}
+
+/* ── Nav sticky bajo el header ────────────────────────────── */
+function initStickyNav() {
+  const header = document.querySelector('header');
+  const nav    = document.querySelector('nav[aria-label="Secciones de cámaras"]');
+  if (!header || !nav) return;
+  function update() { nav.style.top = header.offsetHeight + 'px'; }
+  update();
+  new ResizeObserver(update).observe(header);
 }
 
 /* ── Barra de controles ───────────────────────────────────── */
