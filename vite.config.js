@@ -3,8 +3,8 @@ import tailwindcss           from '@tailwindcss/vite'
 import { viteStaticCopy }    from 'vite-plugin-static-copy'
 
 export default defineConfig({
-  // Base para GitHub Pages: https://zaguan-estudio.github.io/traficotenerife/
-  base: '/traficotenerife/',
+  // Base relativa: funciona tanto en GitHub Pages como abierto directamente
+  base: './',
 
   plugins: [
     tailwindcss(),
