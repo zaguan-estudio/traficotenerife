@@ -95,38 +95,42 @@ function renderGroup(group) {
   const grid = document.createElement('div');
   grid.className = 'camera-grid';
   grid.id = `grid-${group.id}`;
-  group.cameras.forEach(cam => grid.appendChild(makeCamCard(cam.num, cam.name)));
+  group.cameras.forEach(cam => grid.appendChild(makeCamCard(cam.id, cam.name)));
   section.appendChild(grid);
 
   return section;
 }
 
 /* ── Tarjeta de cámara ────────────────────────────────────── */
-function makeCamCard(camNum, camName) {
-  const camId = `cam-${camNum}`;
+// Sanitiza el ID para uso seguro en atributos HTML/DOM (reemplaza guiones por _)
+function domSafe(camId) { return camId.replace(/-/g, '_'); }
+
+function makeCamCard(camId, camName) {
+  const domId = `cam_${domSafe(camId)}`;
   const card  = document.createElement('div');
   card.className = 'cam-card';
-  card.id = `card-${camId}`;
+  card.id = `card-${domId}`;
 
-  const imgUrl = getCameraUrl(camNum);
+  const imgUrl = getCameraUrl(camId);
+  const camIdEsc = camId.replace(/'/g, "\\'");
+  const camNameEsc = camName.replace(/'/g, "\\'");
 
   card.innerHTML = `
     <div class="cam-image-wrap" role="button"
          aria-label="Ampliar cámara ${camName}" tabindex="0">
-      <div class="cam-skeleton" id="skel-${camId}"></div>
-      <img id="img-${camId}"
+      <div class="cam-skeleton" id="skel-${domId}"></div>
+      <img id="img-${domId}"
            src="${imgUrl}"
            alt="Cámara de tráfico: ${camName}"
            loading="lazy"
            class="loading"
-           crossorigin="anonymous"
       />
-      <div class="cam-error-overlay" id="err-${camId}">
+      <div class="cam-error-overlay" id="err-${domId}">
         <span class="error-icon">📷</span>
         <span>Señal no disponible</span>
-        <button class="cam-btn" onclick="retryCam(${camNum},event)">Reintentar</button>
+        <button class="cam-btn" onclick="retryCam('${camIdEsc}',event)">Reintentar</button>
       </div>
-      <span class="cam-live" id="live-${camId}">
+      <span class="cam-live" id="live-${domId}">
         <span class="cam-live-dot"></span>EN VIVO
       </span>
       <span class="cam-refresh-badge">🔍 Ampliar</span>
@@ -135,17 +139,17 @@ function makeCamCard(camNum, camName) {
       <span class="cam-name" title="${camName}">${camName}</span>
       <div class="cam-actions">
         <button class="cam-btn" title="Ver ampliada"
-          onclick="openModal(${camNum},'${camName.replace(/'/g, "\\'")}',event)">⛶</button>
+          onclick="openModal('${camIdEsc}','${camNameEsc}',event)">⛶</button>
         <button class="cam-btn" title="Refrescar"
-          onclick="refreshSingleCam(${camNum},event)">↺</button>
+          onclick="refreshSingleCam('${camIdEsc}',event)">↺</button>
       </div>
     </div>
   `;
 
-  const img  = card.querySelector(`#img-${camId}`);
-  const skel = card.querySelector(`#skel-${camId}`);
-  const err  = card.querySelector(`#err-${camId}`);
-  const live = card.querySelector(`#live-${camId}`);
+  const img  = card.querySelector(`#img-${domId}`);
+  const skel = card.querySelector(`#skel-${domId}`);
+  const err  = card.querySelector(`#err-${domId}`);
+  const live = card.querySelector(`#live-${domId}`);
 
   img.addEventListener('load', () => {
     img.classList.remove('loading');
@@ -164,9 +168,9 @@ function makeCamCard(camNum, camName) {
   });
 
   card.querySelector('.cam-image-wrap').addEventListener('click', () =>
-    openModal(camNum, camName));
+    openModal(camId, camName));
   card.querySelector('.cam-image-wrap').addEventListener('keydown', e => {
-    if (e.key === 'Enter' || e.key === ' ') openModal(camNum, camName);
+    if (e.key === 'Enter' || e.key === ' ') openModal(camId, camName);
   });
 
   return card;
@@ -222,7 +226,7 @@ function toggleAllSections() {
 /* ── Refresco de cámaras ──────────────────────────────────── */
 function refreshAllCams() {
   if (scannerMode) return;  // el escáner gestiona sus propios estados
-  CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.num)));
+  CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.id)));
   resetCountdown();
   if (openModalCamId !== null) {
     const m = $('modal-img');
@@ -230,13 +234,13 @@ function refreshAllCams() {
   }
 }
 
-function refreshSingleCam(camNum, e) {
+function refreshSingleCam(camId, e) {
   if (e) e.stopPropagation();
-  const camId = `cam-${camNum}`;
-  const img   = $(`img-${camId}`);
-  const skel  = $(`skel-${camId}`);
-  const err   = $(`err-${camId}`);
-  const live  = $(`live-${camId}`);
+  const domId = `cam_${domSafe(camId)}`;
+  const img   = $(`img-${domId}`);
+  const skel  = $(`skel-${domId}`);
+  const err   = $(`err-${domId}`);
+  const live  = $(`live-${domId}`);
   if (!img) return;
   if (skel) skel.classList.remove('hidden');
   if (err)  err.classList.remove('visible');
@@ -245,12 +249,12 @@ function refreshSingleCam(camNum, e) {
     live.classList.remove('offline');
     live.innerHTML = '<span class="cam-live-dot"></span>EN VIVO';
   }
-  img.src = getCameraUrl(camNum);
+  img.src = getCameraUrl(camId);
 }
 
-function retryCam(camNum, e) {
+function retryCam(camId, e) {
   if (e) e.stopPropagation();
-  refreshSingleCam(camNum);
+  refreshSingleCam(camId);
 }
 
 /* ── Countdown de auto-refresco ───────────────────────────── */
@@ -393,10 +397,10 @@ function probeImage(url, signal) {
 }
 
 /* ── Modal / lightbox ─────────────────────────────────────── */
-function openModal(camNum, camName, e) {
+function openModal(camId, camName, e) {
   if (e) e.stopPropagation();
-  openModalCamId = camNum;
-  const url = getCameraUrl(camNum);
+  openModalCamId = camId;
+  const url = getCameraUrl(camId);
 
   const mTitle   = $('modal-title');
   const mImg     = $('modal-img');
@@ -406,10 +410,10 @@ function openModal(camNum, camName, e) {
 
   if (mTitle)   mTitle.textContent = camName;
   if (mImg)     { mImg.src = url; mImg.alt = camName; }
-  if (mSrc)     { mSrc.href = `${CIC_BASE}camara-${CAM_SERIES}-${camNum}.jpg`; mSrc.textContent = 'Ver en CIC Tenerife'; }
+  if (mSrc)     { mSrc.href = `${CIC_BASE}camara-${camId}.jpg`; mSrc.textContent = 'Ver en CIC Tenerife'; }
   if (mOverlay) mOverlay.classList.add('open');
   if (mRefBtn)  mRefBtn.onclick = () => {
-    const u = getCameraUrl(camNum);
+    const u = getCameraUrl(camId);
     if (mImg) mImg.src = u;
     if (mSrc) mSrc.href = u;
   };
