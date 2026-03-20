@@ -31,6 +31,7 @@ function init() {
   if (!main) return;
   main.innerHTML = '';
   main.appendChild(renderControls());
+  main.appendChild(renderAvisoAemet());                // Avisos meteorológicos AEMET
   main.appendChild(renderFavoritesSection());          // Favoritas: primera y abierta
   CAMERA_GROUPS.forEach(g => main.appendChild(renderGroup(g)));
   updateNavBadges();
@@ -175,6 +176,82 @@ function buildCamMap() {
   const map = new Map();
   CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => map.set(c.id, c.name)));
   return map;
+}
+
+/* ── Aviso meteorológico AEMET ────────────────────────────── */
+
+function renderAvisoAemet() {
+  const wrap = document.createElement('div');
+  wrap.id = 'aviso-aemet';
+  wrap.innerHTML = `
+    <div class="flex items-center gap-3 px-5 py-4 bg-[#f5f3ee] border border-[#e8e6dc] rounded-2xl mt-4 mb-1 text-xs text-[#6b6860]">
+      <span style="display:inline-block;animation:spin 1s linear infinite">↺</span>
+      Consultando avisos meteorológicos AEMET…
+    </div>`;
+  actualizarAvisoAemet(wrap);
+  return wrap;
+}
+
+function actualizarAvisoAemet(wrap) {
+  const el = wrap || $('aviso-aemet');
+  if (!el || !window.aemet) return;
+  window.aemet.cargar().then(aviso => {
+    el.innerHTML = aviso ? _htmlAviso(aviso) : _htmlSinAvisos();
+  }).catch(() => { el.innerHTML = ''; });
+}
+
+function _htmlSinAvisos() {
+  return `
+    <div class="flex items-center gap-3 px-5 py-4 bg-[#f5f3ee] border border-[#e8e6dc] rounded-2xl mt-4 mb-1">
+      <span style="color:#22c55e;font-size:1rem">✓</span>
+      <div>
+        <span class="text-sm font-semibold text-[#141413]">Sin avisos meteorológicos</span>
+        <span class="text-xs text-[#6b6860] ml-1.5">Tenerife · AEMET</span>
+      </div>
+    </div>`;
+}
+
+function _htmlAviso(av) {
+  const SEV = {
+    Extreme:  { label: 'ROJO',     bg: '#fef2f2', border: '#ef4444', txt: '#b91c1c' },
+    Severe:   { label: 'NARANJA',  bg: '#fff7f5', border: '#d97757', txt: '#d97757' },
+    Moderate: { label: 'AMARILLO', bg: '#fefce8', border: '#ca8a04', txt: '#854d0e' },
+  };
+  const ICONOS = {
+    viento: '💨', lluvia: '🌧', tormenta: '⛈', nieve: '❄️',
+    oleaje: '🌊', calor: '🌡️', niebla: '🌫', frío: '🥶', granizo: '🌨',
+  };
+  const cfg   = SEV[av.severity] ?? SEV.Moderate;
+  const ev    = (av.event || '').toLowerCase();
+  const icono = Object.entries(ICONOS).find(([k]) => ev.includes(k))?.[1] ?? '⚠️';
+  const fmt   = iso => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString('es-ES', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+        timeZone: 'Atlantic/Canary',
+      });
+    } catch { return iso; }
+  };
+  return `
+    <div class="flex items-start gap-3 px-5 py-4 rounded-2xl mt-4 mb-1 border"
+         style="background:${cfg.bg};border-color:${cfg.border}">
+      <span style="font-size:1.5rem;line-height:1;margin-top:2px">${icono}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${cfg.txt}">
+            ▲ Nivel ${cfg.label}
+          </span>
+          <span class="text-sm font-semibold text-[#141413]">${av.event || ''}</span>
+          <span class="text-[10px] text-[#b0aea5]" style="margin-left:auto">AEMET · ${av.area || 'Tenerife'}</span>
+        </div>
+        ${av.headline ? `<p class="text-xs text-[#6b6860] mt-1" style="overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${av.headline}</p>` : ''}
+        <div style="display:flex;flex-wrap:wrap;gap:0 12px;margin-top:6px;font-size:10px;color:#b0aea5">
+          ${av.onset   ? `<span>Vigente: ${fmt(av.onset)}</span>`   : ''}
+          ${av.expires ? `<span>Caduca: ${fmt(av.expires)}</span>`  : ''}
+        </div>
+      </div>
+    </div>`;
 }
 
 function renderFavoritesSection() {
@@ -483,6 +560,7 @@ function refreshAllCams() {
   CAMERA_GROUPS.forEach(g => g.cameras.forEach(c => refreshSingleCam(c.id)));
   refreshFavoritesSection();
   resetCountdown();
+  actualizarAvisoAemet();
   if (openModalCamId !== null) {
     const m = $('modal-img');
     if (m) m.src = getCameraUrl(openModalCamId);

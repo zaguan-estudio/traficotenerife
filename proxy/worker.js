@@ -1,19 +1,24 @@
 /**
- * Cloudflare Worker — Proxy CORS + IA análisis de cámaras
+ * Cloudflare Worker — Proxy CORS + IA análisis de cámaras + Avisos AEMET
  *
  * Endpoints:
  *   GET  /camara-{id}.jpg   → proxy imagen desde CIC Tenerife
  *   POST /analizar          → analiza una cámara con Gemini 2.0 Flash
  *     Body:     { "camId": "2701002-516" }
  *     Response: { "estado": "normal|denso|colapso", "descripcion": "…" }
+ *   GET  /aemet-avisos      → avisos meteorológicos adversos de Tenerife (AEMET)
+ *     Response: { "warnings": [...], "updatedAt": "ISO8601" }
  *
  * ── Despliegue ────────────────────────────────────────────────────────────
  *   1. Instala Wrangler:  npm install -g wrangler
  *   2. Login:             wrangler login
  *   3. Despliega:         wrangler deploy  (usa el wrangler.toml del proyecto)
- *   4. Añade el secret:   wrangler secret put GEMINI_API_KEY
+ *   4. Añade los secrets:
+ *        wrangler secret put GEMINI_API_KEY
+ *        wrangler secret put AEMET_API_KEY
  *      (pega tu API key cuando lo pida — nunca queda en el código)
- *   5. Copia la URL del worker y ponla en WORKER_BASE de alertas.js
+ *      Obtén tu clave AEMET gratuita en https://opendata.aemet.es
+ *   5. Copia la URL del worker y ponla en WORKER_BASE de alertas.js / aemet.js
  * ─────────────────────────────────────────────────────────────────────────
  */
 
@@ -44,6 +49,11 @@ export default {
     // POST /analizar — análisis IA de una cámara
     if (request.method === 'POST' && url.pathname === '/analizar') {
       return handleAnalizar(request, env);
+    }
+
+    // GET /aemet-avisos — avisos meteorológicos de Tenerife
+    if (request.method === 'GET' && url.pathname === '/aemet-avisos') {
+      return handleAemetAvisos(env);
     }
 
     // GET /* — proxy de imagen CIC
@@ -170,6 +180,102 @@ async function handleAnalizar(request, env) {
   } catch (e) {
     return jsonResp({ error: `Error Gemini: ${e.message}` }, 502);
   }
+}
+
+/* ── Avisos meteorológicos AEMET ────────────────────────────── */
+async function handleAemetAvisos(env) {
+  const apiKey = env.AEMET_API_KEY;
+  if (!apiKey) {
+    return jsonResp({ error: 'AEMET_API_KEY no configurado — ejecuta: wrangler secret put AEMET_API_KEY' }, 500);
+  }
+
+  // Área 61 = Isla de Tenerife (zona de avisos AEMET)
+  const AREA = '61';
+
+  try {
+    // Paso 1: obtener la URL de los datos CAP
+    const metaResp = await fetch(
+      `https://opendata.aemet.es/openapi/api/avisos_cap/ultimoelaborado/area/${AREA}?api_key=${apiKey}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+
+    if (metaResp.status === 204 || metaResp.status === 404) {
+      return jsonResp({ warnings: [], updatedAt: new Date().toISOString() });
+    }
+    if (!metaResp.ok) {
+      return jsonResp({ error: `AEMET meta ${metaResp.status}` }, 502);
+    }
+
+    const meta = await metaResp.json();
+    if (!meta.datos) {
+      return jsonResp({ warnings: [], updatedAt: new Date().toISOString() });
+    }
+
+    // Paso 2: descargar el fichero CAP (XML)
+    const dataResp = await fetch(meta.datos, { signal: AbortSignal.timeout(10000) });
+    if (!dataResp.ok) {
+      return jsonResp({ error: `AEMET datos ${dataResp.status}` }, 502);
+    }
+
+    const xml      = await dataResp.text();
+    const warnings = parseCapXml(xml);
+
+    return jsonResp({ warnings, updatedAt: new Date().toISOString() });
+
+  } catch (e) {
+    return jsonResp({ error: `AEMET error: ${e.message}` }, 502);
+  }
+}
+
+/**
+ * Parsea un fichero CAP 1.2 (XML) y devuelve un array de avisos activos
+ * ordenados de mayor a menor severidad (Extreme → Severe → Moderate).
+ * Solo devuelve avisos de status "Actual" con severity >= Moderate.
+ */
+function parseCapXml(xml) {
+  // Ignorar mensajes que no sean alertas reales
+  const alertStatus = extractTag(xml, 'status');
+  if (alertStatus && alertStatus !== 'Actual') return [];
+
+  const warnings = [];
+  const SEV_ORDER = { Extreme: 3, Severe: 2, Moderate: 1 };
+
+  // Iterar sobre todos los bloques <info>
+  const infoRegex = /<info[\s>]([\s\S]*?)<\/info>/g;
+  let m;
+  while ((m = infoRegex.exec(xml)) !== null) {
+    const info = m[1];
+
+    // Solo idioma español
+    const lang = extractTag(info, 'language');
+    if (lang && lang !== 'es-ES') continue;
+
+    const severity = extractTag(info, 'severity') || '';
+    if (!SEV_ORDER[severity]) continue; // Ignorar Minor y desconocidos
+
+    warnings.push({
+      event:       extractTag(info, 'event')       || '',
+      urgency:     extractTag(info, 'urgency')     || '',
+      severity,
+      certainty:   extractTag(info, 'certainty')   || '',
+      onset:       extractTag(info, 'onset')        || '',
+      expires:     extractTag(info, 'expires')      || '',
+      headline:    extractTag(info, 'headline')     || '',
+      description: extractTag(info, 'description') || '',
+      area:        extractTag(info, 'areaDesc')     || 'Tenerife',
+    });
+  }
+
+  // Ordenar: más grave primero
+  warnings.sort((a, b) => (SEV_ORDER[b.severity] || 0) - (SEV_ORDER[a.severity] || 0));
+  return warnings;
+}
+
+/** Extrae el texto de una etiqueta XML simple (soporta CDATA). */
+function extractTag(xml, tag) {
+  const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
+  if (!m) return null;
+  return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
 }
 
 function jsonResp(data, status = 200) {
