@@ -96,21 +96,22 @@ function _parsearRss(xml) {
 
     if (!LLUVIA_RE.test(texto)) continue;
 
-    /* Severidad desde color en el título -------------------- */
-    const tituloLC = titulo.toLowerCase();
-    let severity   = 'Moderate';
+    /* Severidad desde color en título O descripción ---------- */
+    const colorText = (titulo + ' ' + desc).toLowerCase();
+    let severity    = 'Moderate';
     for (const [color, sev] of Object.entries(COLOR_SEV)) {
-      if (tituloLC.includes(color)) { severity = sev; break; }
+      if (colorText.includes(color)) { severity = sev; break; }
     }
 
-    /* Zona: todo lo que va detrás de la descripción del aviso */
+    /* Zona: todo lo que va detrás de "para" en el título ----- */
     const area = _extraerZona(titulo) || 'Tenerife';
 
-    /* Evento: preferimos "Tormenta" sobre "Lluvia" */
+    /* Evento: de más específico a más genérico --------------- */
     let event = 'Lluvia';
-    if (/tormenta/i.test(texto))  event = 'Tormenta';
-    else if (/granizo/i.test(texto)) event = 'Granizo';
-    else if (/chubasco/i.test(texto)) event = 'Chubascos';
+    if (/tormenta/i.test(texto))        event = 'Tormenta';
+    else if (/granizo/i.test(texto))    event = 'Granizo';
+    else if (/chubasco/i.test(texto))   event = 'Chubascos';
+    else if (/precipitaci/i.test(texto)) event = 'Precipitaciones';
 
     /* URL del CAP XML individual */
     const capUrl = _extraerLink(bloque);
