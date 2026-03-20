@@ -126,7 +126,6 @@ function _guardarCache(fecha, xml) {
 function _parsearRss(xml) {
   const ahora = new Date();
   const hoy   = _diaTZ(ahora, TZ);
-  const ayer  = _diaTZ(new Date(ahora - 86_400_000), TZ);
 
   const candidatos = [];
   const reItem = /<item[\s>]([\s\S]*?)<\/item>/g;
@@ -135,11 +134,21 @@ function _parsearRss(xml) {
   while ((m = reItem.exec(xml)) !== null) {
     const bloque = m[1];
 
+    /* Vigencia: si cap:expires está en el futuro → aviso activo */
+    const expiresRaw = _tag(bloque, 'cap:expires') || _tag(bloque, 'expires');
+    if (expiresRaw) {
+      const expiresDate = new Date(expiresRaw);
+      if (!isNaN(expiresDate) && expiresDate < ahora) continue; // ya expirado
+    }
+
     /* Fecha de publicación ---------------------------------- */
     const pubRaw = _tag(bloque, 'pubDate');
     if (!pubRaw) continue;
-    const fechaPub = _diaTZ(new Date(pubRaw), TZ);
-    if (fechaPub !== hoy && fechaPub !== ayer) continue;
+    const pubDate   = new Date(pubRaw);
+    const fechaPub  = _diaTZ(pubDate, TZ);
+    // Aceptar: publicado hoy, o en los últimos 4 días y sin fecha de expiración conocida
+    if (fechaPub > hoy) continue; // pubDate en el futuro → raro, descartar
+    if (!expiresRaw && pubDate < new Date(ahora - 4 * 86_400_000)) continue;
 
     /* Texto para detectar evento ---------------------------- */
     const titulo = _tag(bloque, 'title')       || '';
