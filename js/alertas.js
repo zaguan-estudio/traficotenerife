@@ -262,6 +262,7 @@ function renderPanel() {
   if (estadoActivo.size === 0) {
     panel.style.display = 'none';
     panel.innerHTML = '';
+    actualizarOverlaysCamaras();
     return;
   }
 
@@ -274,6 +275,50 @@ function renderPanel() {
     <div class="max-w-[1600px] mx-auto px-3 py-2.5 flex flex-wrap gap-2">
       ${items.map(tarjetaHTML).join('')}
     </div>`;
+
+  actualizarOverlaysCamaras();
+}
+
+/* ── Overlays de alerta sobre las tarjetas de cámara ───────── */
+function actualizarOverlaysCamaras() {
+  // Limpiar todos los overlays existentes
+  document.querySelectorAll('[data-cam-alert]').forEach(el => {
+    el.style.display = 'none';
+    el.style.background = '';
+    el.innerHTML = '';
+  });
+  document.querySelectorAll('[data-cam-alert-text]').forEach(el => {
+    el.style.display = 'none';
+    el.style.background = '';
+    el.style.color = '';
+    el.style.borderTop = '';
+    el.textContent = '';
+  });
+
+  // Aplicar overlays para cada alerta activa
+  estadoActivo.forEach(({ estado, descripcion }, camId) => {
+    const esColapso = estado === 'colapso';
+    const icon      = esColapso ? '🔴' : '🟡';
+    const label     = esColapso ? 'Colapso' : 'Tráfico denso';
+    const badgeBg   = esColapso ? 'rgba(185,28,28,0.82)' : 'rgba(180,83,9,0.82)';
+    const textBg    = esColapso ? '#fef2f2' : '#fff7ed';
+    const textClr   = esColapso ? '#b91c1c' : '#9a3412';
+    const borderClr = esColapso ? '#fecaca' : '#fed7aa';
+
+    document.querySelectorAll(`[data-cam-alert="${camId}"]`).forEach(el => {
+      el.style.display    = '';
+      el.style.background = badgeBg;
+      el.innerHTML = `<span style="font-size:0.9rem;line-height:1">${icon}</span><span>${label}</span>`;
+    });
+
+    document.querySelectorAll(`[data-cam-alert-text="${camId}"]`).forEach(el => {
+      el.style.display    = '';
+      el.style.background = textBg;
+      el.style.color      = textClr;
+      el.style.borderTop  = `1px solid ${borderClr}`;
+      el.textContent      = descripcion;
+    });
+  });
 }
 
 function tarjetaHTML({ estado, descripcion, camName, road, hora }) {
@@ -295,4 +340,4 @@ function tarjetaHTML({ estado, descripcion, camName, road, hora }) {
 }
 
 /* ── API pública ───────────────────────────────────────────── */
-window.alertas = { analizarTodas, lanzarConProgreso };
+window.alertas = { analizarTodas, lanzarConProgreso, actualizarOverlaysCamaras };

@@ -119,6 +119,14 @@ function renderControls() {
   applyLayout(mq.matches);
   mq.addEventListener('change', e => applyLayout(e.matches));
 
+  // Exponer función para plegar settings desde otros módulos (ej. tras detectar atascos)
+  window.cerrarSettings = () => {
+    if (!mq.matches && settingsOpen) {
+      settingsOpen = false;
+      applyLayout(false);
+    }
+  };
+
   // Gear button lives in the static HTML top bar
   const gearBtn = document.getElementById('btn-settings-toggle');
   if (gearBtn) {
@@ -317,6 +325,8 @@ function refreshFavoritesSection() {
   if (n > 0) {
     renderFavoritesGrid(grid, favIds);
     grid.style.maxHeight = ''; // altura natural, sin restricción
+    // Re-aplicar overlays de alertas en las nuevas tarjetas favoritas
+    window.alertas?.actualizarOverlaysCamaras?.();
   }
 
   const badge    = $('badge-favoritas');
@@ -416,7 +426,17 @@ function makeCamCard(camId, camName, favMode = false) {
       <span class="absolute top-1.5 right-1.5 bg-black/70 text-[#d97757] text-[10px] px-1.5 py-0.5 rounded hidden group-hover:flex items-center gap-1">
         🔍 Ampliar
       </span>
+
+      <!-- Badge de alerta de tráfico (icono sobre imagen, parte inferior) -->
+      <div data-cam-alert="${camId}"
+           style="display:none"
+           class="absolute inset-x-0 bottom-0 z-10 pointer-events-none flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold text-white"></div>
     </div>
+
+    <!-- Texto de alerta de tráfico (entre imagen y botones) -->
+    <div data-cam-alert-text="${camId}"
+         style="display:none"
+         class="px-2.5 py-1.5 text-[11px] leading-snug"></div>
 
     <!-- Footer de la tarjeta -->
     <div class="px-2.5 py-2 flex items-center justify-between gap-2 border-t border-[#e8e6dc] bg-white">
@@ -541,6 +561,9 @@ async function lanzarDeteccionIA() {
       btn.className = 'bg-green-50 border border-green-300 text-green-700 px-3.5 py-1.5 rounded text-xs cursor-pointer flex items-center gap-1.5 shadow-sm';
       btn.innerHTML = '✓ Sin incidencias';
     }
+
+    // Plegar panel de settings en móvil tras mostrar el resultado
+    window.cerrarSettings?.();
   } catch {
     btn.disabled  = false;
     btn.className = BTN_BASE;

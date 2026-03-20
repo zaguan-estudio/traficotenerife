@@ -12,7 +12,8 @@
  *      y enriquecer con onset/expires/description detallado
  */
 
-const RSS_TENERIFE = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
+// El worker actúa de proxy CORS para el RSS público de AEMET
+const RSS_TENERIFE = 'https://traficotenerife.nameless-bush-75c2.workers.dev/aviso-aemet';
 
 /** Palabras clave de eventos de lluvia */
 const LLUVIA_RE = /lluvi|precipitaci|tormenta|granizo|chubasco/i;
