@@ -1,19 +1,21 @@
 /**
- * Avisos meteorológicos — AEMET (RSS/CAP)
+ * Avisos meteorológicos — AEMET (RSS/CAP + caché localStorage diaria)
  * Fuente: RSS público de avisos para Tenerife (zona AFAP6596)
  *
  * Muestra avisos de lluvia publicados hoy o ayer (hora canaria).
- * No requiere API key. Falla silenciosamente ante errores de red o CORS.
+ * Sin proxy, sin API key. Llamada directa al RSS de AEMET.
  *
- * Flujo:
- *   1. Descarga RSS  → parsea <item> con pubDate, title, link
- *   2. Filtra: fecha (hoy/ayer) + evento lluvia
- *   3. Para el aviso más grave, intenta descargar su CAP XML
- *      y enriquecer con onset/expires/description detallado
+ * Estrategia de caché:
+ *   - Si localStorage contiene el RSS del día de hoy → se usa directamente
+ *     (cero peticiones de red durante el resto del día)
+ *   - Si el día ha cambiado o no hay caché → se descarga el RSS y se guarda
+ *   - Si la descarga falla (CORS, red) → se usa el último RSS guardado
+ *     (los avisos de ayer siguen siendo relevantes con el filtro hoy/ayer)
  */
 
-// El worker actúa de proxy CORS para el RSS público de AEMET
-const RSS_TENERIFE = 'https://traficotenerife.nameless-bush-75c2.workers.dev/aviso-aemet';
+const RSS_URL   = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
+const CACHE_KEY = 'aemet_rss_tenerife';
+const TZ        = 'Atlantic/Canary';
 
 /** Palabras clave de eventos de lluvia */
 const LLUVIA_RE = /lluvi|precipitaci|tormenta|granizo|chubasco/i;
@@ -23,6 +25,10 @@ const COLOR_SEV = { rojo: 'Extreme', naranja: 'Severe', amarillo: 'Moderate' };
 
 const SEV_ORD = { Extreme: 3, Severe: 2, Moderate: 1 };
 
+/* ════════════════════════════════════════════════════════════
+   API PÚBLICA
+   ════════════════════════════════════════════════════════════ */
+
 /**
  * Devuelve el aviso de lluvia más crítico publicado hoy o ayer,
  * o null si no hay ninguno.
@@ -30,25 +36,22 @@ const SEV_ORD = { Extreme: 3, Severe: 2, Moderate: 1 };
  */
 async function cargar() {
   try {
-    const res = await fetch(RSS_TENERIFE, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return null;
+    const xml = await _obtenerRss();
+    if (!xml) return null;
 
-    const xml       = await res.text();
     const candidatos = _parsearRss(xml);
     if (!candidatos.length) return null;
 
-    // El más grave primero
     candidatos.sort((a, b) => (SEV_ORD[b.severity] || 0) - (SEV_ORD[a.severity] || 0));
     const mejor = candidatos[0];
 
-    // Enriquecer con datos CAP completos (onset / expires / descripción)
+    // Enriquecer con onset/expires desde el CAP XML individual (opcional)
     if (mejor.capUrl) {
       try {
         const capRes = await fetch(mejor.capUrl, { signal: AbortSignal.timeout(8000) });
         if (capRes.ok) {
-          const capXml  = await capRes.text();
-          const detalles = _parseCapXml(capXml);
-          const match    = detalles.find(d =>
+          const detalles = _parseCapXml(await capRes.text());
+          const match = detalles.find(d =>
             d.severity === mejor.severity || LLUVIA_RE.test(d.event)
           ) || detalles[0];
           if (match) {
@@ -56,7 +59,6 @@ async function cargar() {
             mejor.expires     = match.expires     || mejor.expires;
             mejor.description = match.description || mejor.description;
             mejor.area        = match.area        || mejor.area;
-            mejor.urgency     = match.urgency     || '';
           }
         }
       } catch { /* enriquecimiento opcional */ }
@@ -69,13 +71,62 @@ async function cargar() {
   }
 }
 
+/* ════════════════════════════════════════════════════════════
+   CACHÉ DIARIA (localStorage)
+   ════════════════════════════════════════════════════════════ */
+
+/**
+ * Devuelve el XML del RSS de AEMET.
+ * Prioridad: caché de hoy → fetch fresco → caché antigua (fallback).
+ */
+async function _obtenerRss() {
+  const hoy = _diaTZ(new Date(), TZ);
+
+  // 1. Caché válida de hoy → sin red
+  const cacheXml = _leerCache(hoy);
+  if (cacheXml) return cacheXml;
+
+  // 2. Fetch fresco
+  try {
+    const res = await fetch(RSS_URL, { signal: AbortSignal.timeout(10000) });
+    if (res.ok) {
+      const xml = await res.text();
+      _guardarCache(hoy, xml);
+      return xml;
+    }
+  } catch { /* CORS o red — continuar con fallback */ }
+
+  // 3. Fallback: cualquier caché previa (avisos de ayer siguen filtrándose por fecha)
+  return _leerCache(null);
+}
+
+/** Lee el XML guardado. Si fecha !== null exige que coincida con esa fecha. */
+function _leerCache(fecha) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { f, xml } = JSON.parse(raw);
+    if (!xml) return null;
+    if (fecha !== null && f !== fecha) return null;
+    return xml;
+  } catch {
+    return null;
+  }
+}
+
+/** Guarda { f: fecha, xml } en localStorage (ignora errores de cuota). */
+function _guardarCache(fecha, xml) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ f: fecha, xml }));
+  } catch { /* quota exceeded — sin caché */ }
+}
+
 /* ── Parser RSS ───────────────────────────────────────────── */
 
 function _parsearRss(xml) {
-  const tz    = 'Atlantic/Canary';
   const ahora = new Date();
-  const hoy   = _diaTZ(ahora, tz);
-  const ayer  = _diaTZ(new Date(ahora - 86_400_000), tz);
+  const hoy   = _diaTZ(ahora, TZ);
+  const ayer  = _diaTZ(new Date(ahora - 86_400_000), TZ);
 
   const candidatos = [];
   const reItem = /<item[\s>]([\s\S]*?)<\/item>/g;
@@ -87,7 +138,7 @@ function _parsearRss(xml) {
     /* Fecha de publicación ---------------------------------- */
     const pubRaw = _tag(bloque, 'pubDate');
     if (!pubRaw) continue;
-    const fechaPub = _diaTZ(new Date(pubRaw), tz);
+    const fechaPub = _diaTZ(new Date(pubRaw), TZ);
     if (fechaPub !== hoy && fechaPub !== ayer) continue;
 
     /* Texto para detectar evento ---------------------------- */
@@ -98,24 +149,21 @@ function _parsearRss(xml) {
     if (!LLUVIA_RE.test(texto)) continue;
 
     /* Severidad desde color en título O descripción ---------- */
-    const colorText = (titulo + ' ' + desc).toLowerCase();
+    const colorText = texto.toLowerCase();
     let severity    = 'Moderate';
     for (const [color, sev] of Object.entries(COLOR_SEV)) {
       if (colorText.includes(color)) { severity = sev; break; }
     }
 
-    /* Zona: todo lo que va detrás de "para" en el título ----- */
+    /* Zona */
     const area = _extraerZona(titulo) || 'Tenerife';
 
-    /* Evento: de más específico a más genérico --------------- */
+    /* Evento */
     let event = 'Lluvia';
-    if (/tormenta/i.test(texto))        event = 'Tormenta';
-    else if (/granizo/i.test(texto))    event = 'Granizo';
-    else if (/chubasco/i.test(texto))   event = 'Chubascos';
+    if (/tormenta/i.test(texto))         event = 'Tormenta';
+    else if (/granizo/i.test(texto))     event = 'Granizo';
+    else if (/chubasco/i.test(texto))    event = 'Chubascos';
     else if (/precipitaci/i.test(texto)) event = 'Precipitaciones';
-
-    /* URL del CAP XML individual */
-    const capUrl = _extraerLink(bloque);
 
     candidatos.push({
       event,
@@ -125,8 +173,7 @@ function _parsearRss(xml) {
       area,
       onset:   '',
       expires: '',
-      capUrl,
-      pubDate: pubRaw,
+      capUrl:  _extraerLink(bloque),
     });
   }
 
@@ -135,10 +182,6 @@ function _parsearRss(xml) {
 
 /* ── Parser CAP 1.2 (XML individual) ─────────────────────── */
 
-/**
- * Parsea un fichero CAP 1.2 y devuelve avisos activos ordenados
- * por severidad descendente. Ignora Minor, Test, Draft, Exercise.
- */
 function _parseCapXml(xml) {
   const alertStatus = _tag(xml, 'status');
   if (alertStatus && alertStatus !== 'Actual') return [];
@@ -157,15 +200,12 @@ function _parseCapXml(xml) {
     if (!SEV_ORD[severity]) continue;
 
     warnings.push({
-      event:       _tag(info, 'event')       || '',
+      event:       _tag(info, 'event')        || '',
       severity,
-      urgency:     _tag(info, 'urgency')     || '',
-      certainty:   _tag(info, 'certainty')   || '',
-      onset:       _tag(info, 'onset')       || '',
-      expires:     _tag(info, 'expires')     || '',
-      headline:    _tag(info, 'headline')    || '',
-      description: _tag(info, 'description')|| '',
-      area:        _tag(info, 'areaDesc')    || 'Tenerife',
+      onset:       _tag(info, 'onset')        || '',
+      expires:     _tag(info, 'expires')      || '',
+      description: _tag(info, 'description') || '',
+      area:        _tag(info, 'areaDesc')     || 'Tenerife',
     });
   }
 
@@ -175,34 +215,25 @@ function _parseCapXml(xml) {
 
 /* ── Utilidades ───────────────────────────────────────────── */
 
-/** Extrae el texto de una etiqueta XML simple (soporta CDATA). */
 function _tag(xml, tag) {
   const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
   if (!m) return null;
   return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
 }
 
-/** Extrae la URL del enlace de un bloque RSS <item>. */
 function _extraerLink(bloque) {
-  // RSS 2.0 estándar: <link>https://...</link>
   const m1 = bloque.match(/<link>([\s\S]*?)<\/link>/);
   if (m1) return m1[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
-  // Atom: <atom:link href="..." /> o <link href="..." />
   const m2 = bloque.match(/<(?:atom:)?link[^>]+href=["']([^"']+)["']/);
   if (m2) return m2[1];
   return null;
 }
 
-/**
- * Extrae la zona desde el título del aviso.
- * Ej: "Aviso amarillo de lluvia para Norte de Tenerife" → "Norte de Tenerife"
- */
 function _extraerZona(titulo) {
   const m = titulo.match(/\bpara\s+(.+)/i);
   return m ? m[1].trim() : null;
 }
 
-/** Devuelve la fecha 'YYYY-MM-DD' de una Date en la zona horaria indicada. */
 function _diaTZ(date, tz) {
   try {
     const parts = new Intl.DateTimeFormat('en-CA', {

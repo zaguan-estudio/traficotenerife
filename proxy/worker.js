@@ -46,11 +46,6 @@ export default {
       return handleAnalizar(request, env);
     }
 
-    // GET /aviso-aemet — proxy RSS avisos meteorológicos AEMET Tenerife
-    if (request.method === 'GET' && url.pathname === '/aviso-aemet') {
-      return handleAvisoAemet();
-    }
-
     // GET /* — proxy de imagen CIC
     return handleProxy(url);
   },
@@ -88,29 +83,6 @@ async function handleProxy(url) {
       'Cache-Control': 'no-store',
     },
   });
-}
-
-/* ── Proxy RSS AEMET ───────────────────────────────────────── */
-async function handleAvisoAemet() {
-  const RSS = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
-  try {
-    const resp = await fetch(RSS, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; TraficoTenerife/1.0)' },
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!resp.ok) return new Response('', { status: resp.status, headers: CORS_HEADERS });
-    const xml = await resp.text();
-    return new Response(xml, {
-      status: 200,
-      headers: {
-        ...CORS_HEADERS,
-        'Content-Type':  'application/xml; charset=utf-8',
-        'Cache-Control': 'max-age=300',
-      },
-    });
-  } catch (e) {
-    return new Response('', { status: 502, headers: CORS_HEADERS });
-  }
 }
 
 /* ── Análisis IA con Gemini ────────────────────────────────── */
