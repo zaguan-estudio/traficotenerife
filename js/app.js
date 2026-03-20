@@ -8,7 +8,7 @@ const REFRESH_INTERVAL_MS = 300000; // 5 minutos
 let refreshTimer    = null;
 let countdownTimer  = null;
 let countdownRemain = REFRESH_INTERVAL_MS / 1000;
-let autoRefreshOn   = true;
+let autoRefreshOn   = false;
 let openModalCamId  = null;
 let allExpanded     = true;
 
@@ -79,11 +79,11 @@ function renderControls() {
   panel.id = 'settings-panel';
   panel.style.display = 'none'; // hidden by default; applyLayout will show on desktop
   panel.innerHTML = `
-    <button id="btn-auto-refresh" class="${BTN_ACTIVE}">↺ Auto-actualizar</button>
+    <button id="btn-auto-refresh" class="${BTN_BASE}">↺ Auto-actualizar</button>
     <button id="btn-refresh-now"  class="${BTN_BASE}">⟳ Actualizar ahora</button>
     <button id="btn-expand-all"   class="${BTN_BASE}">⊟ Colapsar todo</button>
     <button id="btn-detectar-ia"  class="${BTN_BASE}">🔍 Detectar atascos con IA</button>
-    <div id="countdown-label" class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5">
+    <div id="countdown-label" class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5" style="opacity:0.4">
       Próx. actualización:
       <strong id="countdown-secs">${countdownRemain}</strong>
       <div class="w-20 h-0.5 bg-[#e8e6dc] rounded-full overflow-hidden">
@@ -487,7 +487,6 @@ function refreshAllCams() {
     const m = $('modal-img');
     if (m) m.src = getCameraUrl(openModalCamId);
   }
-  window.alertas?.analizarTodas?.();
 }
 
 function refreshSingleCam(camId, e) {
@@ -637,7 +636,6 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
   initBackToTop();
   initScrollSpy();
-  setTimeout(() => window.alertas?.analizarTodas?.(), 4000);
 
   const mClose   = $('modal-close');
   const mOverlay = $('modal-overlay');
