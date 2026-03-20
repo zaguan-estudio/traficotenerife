@@ -1,112 +1,217 @@
 /**
- * Avisos meteorológicos adversos — AEMET OpenData
- * Área: Isla de Tenerife (código 61)
+ * Avisos meteorológicos — AEMET (RSS/CAP)
+ * Fuente: RSS público de avisos para Tenerife (zona AFAP6596)
  *
- * Llamada directa al API de AEMET desde el navegador.
+ * Muestra avisos de lluvia publicados hoy o ayer (hora canaria).
+ * No requiere API key. Falla silenciosamente ante errores de red o CORS.
  *
- * ⚠️  La API key está en el código fuente (visible en el repo).
- *     Es una clave gratuita de AEMET sin coste económico.
- *     Si AEMET bloquea llamadas desde el navegador (CORS),
- *     el widget fallará silenciosamente sin afectar a la app.
- *
- * Endpoints consultados:
- *   GET /api/avisos_cap/ultimoelaborado/area/61  → avisos CAP Tenerife
- *
- * Docs: https://opendata.aemet.es/dist/index.html
+ * Flujo:
+ *   1. Descarga RSS  → parsea <item> con pubDate, title, link
+ *   2. Filtra: fecha (hoy/ayer) + evento lluvia
+ *   3. Para el aviso más grave, intenta descargar su CAP XML
+ *      y enriquecer con onset/expires/description detallado
  */
 
-const AEMET_API_KEY = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJoZWxsb0B6YWd1YW4uaW8iLCJqdGkiOiJmN2IzZmYzOC1mNzliLTQ4YjktYmRkNy01ZWZlOGU3YTcyN2QiLCJpc3MiOiJBRU1FVCIsImlhdCI6MTc3Mzk2OTI3NSwidXNlcklkIjoiZjdiM2ZmMzgtZjc5Yi00OGI5LWJkZDctNWVmZThlN2E3MjdkIiwicm9sZSI6IiJ9.IKSIeRKdQC42HVxTO58SGUNtoOxzbu1HiX0PiJhrTGk';
-const AEMET_BASE   = 'https://opendata.aemet.es/openapi/api';
+const RSS_TENERIFE = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
 
-// Área 61 = Isla de Tenerife (zona de avisos AEMET)
-const AREA_TENERIFE = '61';
+/** Palabras clave de eventos de lluvia */
+const LLUVIA_RE = /lluvi|precipitaci|tormenta|granizo|chubasco/i;
+
+/** Mapa color → severidad CAP */
+const COLOR_SEV = { rojo: 'Extreme', naranja: 'Severe', amarillo: 'Moderate' };
+
+const SEV_ORD = { Extreme: 3, Severe: 2, Moderate: 1 };
 
 /**
- * Devuelve el aviso más crítico activo para Tenerife, o null si no hay ninguno.
- * Falla silenciosamente ante errores de red o CORS.
+ * Devuelve el aviso de lluvia más crítico publicado hoy o ayer,
+ * o null si no hay ninguno.
  * @returns {Promise<object|null>}
  */
 async function cargar() {
   try {
-    // Paso 1: obtener la URL de los datos CAP
-    const metaRes = await fetch(
-      `${AEMET_BASE}/avisos_cap/ultimoelaborado/area/${AREA_TENERIFE}?api_key=${AEMET_API_KEY}`,
-      { signal: AbortSignal.timeout(10000) }
-    );
+    const res = await fetch(RSS_TENERIFE, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
 
-    // 204 = sin avisos activos para el área
-    if (metaRes.status === 204 || metaRes.status === 404) return null;
-    if (!metaRes.ok) return null;
+    const xml       = await res.text();
+    const candidatos = _parsearRss(xml);
+    if (!candidatos.length) return null;
 
-    const meta = await metaRes.json();
+    // El más grave primero
+    candidatos.sort((a, b) => (SEV_ORD[b.severity] || 0) - (SEV_ORD[a.severity] || 0));
+    const mejor = candidatos[0];
 
-    // 429 u otros errores pueden devolver { estado: 429 } sin datos
-    if (!meta.datos || meta.estado === 429) return null;
+    // Enriquecer con datos CAP completos (onset / expires / descripción)
+    if (mejor.capUrl) {
+      try {
+        const capRes = await fetch(mejor.capUrl, { signal: AbortSignal.timeout(8000) });
+        if (capRes.ok) {
+          const capXml  = await capRes.text();
+          const detalles = _parseCapXml(capXml);
+          const match    = detalles.find(d =>
+            d.severity === mejor.severity || LLUVIA_RE.test(d.event)
+          ) || detalles[0];
+          if (match) {
+            mejor.onset       = match.onset       || mejor.onset;
+            mejor.expires     = match.expires     || mejor.expires;
+            mejor.description = match.description || mejor.description;
+            mejor.area        = match.area        || mejor.area;
+            mejor.urgency     = match.urgency     || '';
+          }
+        }
+      } catch { /* enriquecimiento opcional */ }
+    }
 
-    // Paso 2: descargar el fichero CAP (XML)
-    const dataRes = await fetch(meta.datos, { signal: AbortSignal.timeout(10000) });
-    if (!dataRes.ok) return null;
-
-    const xml      = await dataRes.text();
-    const warnings = _parseCapXml(xml);
-    return warnings.length > 0 ? warnings[0] : null;
+    return mejor;
 
   } catch {
-    // CORS, timeout, red — falla silenciosamente
     return null;
   }
 }
 
-/* ── Parser CAP 1.2 (XML) ─────────────────────────────────── */
+/* ── Parser RSS ───────────────────────────────────────────── */
+
+function _parsearRss(xml) {
+  const tz    = 'Atlantic/Canary';
+  const ahora = new Date();
+  const hoy   = _diaTZ(ahora, tz);
+  const ayer  = _diaTZ(new Date(ahora - 86_400_000), tz);
+
+  const candidatos = [];
+  const reItem = /<item[\s>]([\s\S]*?)<\/item>/g;
+  let m;
+
+  while ((m = reItem.exec(xml)) !== null) {
+    const bloque = m[1];
+
+    /* Fecha de publicación ---------------------------------- */
+    const pubRaw = _tag(bloque, 'pubDate');
+    if (!pubRaw) continue;
+    const fechaPub = _diaTZ(new Date(pubRaw), tz);
+    if (fechaPub !== hoy && fechaPub !== ayer) continue;
+
+    /* Texto para detectar evento ---------------------------- */
+    const titulo = _tag(bloque, 'title')       || '';
+    const desc   = _tag(bloque, 'description') || '';
+    const texto  = titulo + ' ' + desc;
+
+    if (!LLUVIA_RE.test(texto)) continue;
+
+    /* Severidad desde color en el título -------------------- */
+    const tituloLC = titulo.toLowerCase();
+    let severity   = 'Moderate';
+    for (const [color, sev] of Object.entries(COLOR_SEV)) {
+      if (tituloLC.includes(color)) { severity = sev; break; }
+    }
+
+    /* Zona: todo lo que va detrás de la descripción del aviso */
+    const area = _extraerZona(titulo) || 'Tenerife';
+
+    /* Evento: preferimos "Tormenta" sobre "Lluvia" */
+    let event = 'Lluvia';
+    if (/tormenta/i.test(texto))  event = 'Tormenta';
+    else if (/granizo/i.test(texto)) event = 'Granizo';
+    else if (/chubasco/i.test(texto)) event = 'Chubascos';
+
+    /* URL del CAP XML individual */
+    const capUrl = _extraerLink(bloque);
+
+    candidatos.push({
+      event,
+      severity,
+      headline:    titulo,
+      description: desc,
+      area,
+      onset:   '',
+      expires: '',
+      capUrl,
+      pubDate: pubRaw,
+    });
+  }
+
+  return candidatos;
+}
+
+/* ── Parser CAP 1.2 (XML individual) ─────────────────────── */
 
 /**
- * Parsea un fichero CAP 1.2 y devuelve avisos activos
- * ordenados por severidad descendente (Extreme → Severe → Moderate).
- * Ignora mensajes Minor, Test, Draft o Exercise.
+ * Parsea un fichero CAP 1.2 y devuelve avisos activos ordenados
+ * por severidad descendente. Ignora Minor, Test, Draft, Exercise.
  */
 function _parseCapXml(xml) {
-  // Solo mensajes con status "Actual"
   const alertStatus = _tag(xml, 'status');
   if (alertStatus && alertStatus !== 'Actual') return [];
 
-  const SEV = { Extreme: 3, Severe: 2, Moderate: 1 };
   const warnings = [];
-
   const re = /<info[\s>]([\s\S]*?)<\/info>/g;
   let m;
+
   while ((m = re.exec(xml)) !== null) {
     const info = m[1];
 
-    // Solo bloques en español
     const lang = _tag(info, 'language');
     if (lang && lang !== 'es-ES') continue;
 
     const severity = _tag(info, 'severity') || '';
-    if (!SEV[severity]) continue; // Ignorar Minor y desconocidos
+    if (!SEV_ORD[severity]) continue;
 
     warnings.push({
       event:       _tag(info, 'event')       || '',
       severity,
       urgency:     _tag(info, 'urgency')     || '',
       certainty:   _tag(info, 'certainty')   || '',
-      onset:       _tag(info, 'onset')        || '',
-      expires:     _tag(info, 'expires')      || '',
-      headline:    _tag(info, 'headline')     || '',
-      description: _tag(info, 'description') || '',
-      area:        _tag(info, 'areaDesc')     || 'Tenerife',
+      onset:       _tag(info, 'onset')       || '',
+      expires:     _tag(info, 'expires')     || '',
+      headline:    _tag(info, 'headline')    || '',
+      description: _tag(info, 'description')|| '',
+      area:        _tag(info, 'areaDesc')    || 'Tenerife',
     });
   }
 
-  // Ordenar: más grave primero
-  warnings.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0));
+  warnings.sort((a, b) => (SEV_ORD[b.severity] || 0) - (SEV_ORD[a.severity] || 0));
   return warnings;
 }
+
+/* ── Utilidades ───────────────────────────────────────────── */
 
 /** Extrae el texto de una etiqueta XML simple (soporta CDATA). */
 function _tag(xml, tag) {
   const m = xml.match(new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`));
   if (!m) return null;
   return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
+}
+
+/** Extrae la URL del enlace de un bloque RSS <item>. */
+function _extraerLink(bloque) {
+  // RSS 2.0 estándar: <link>https://...</link>
+  const m1 = bloque.match(/<link>([\s\S]*?)<\/link>/);
+  if (m1) return m1[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').trim();
+  // Atom: <atom:link href="..." /> o <link href="..." />
+  const m2 = bloque.match(/<(?:atom:)?link[^>]+href=["']([^"']+)["']/);
+  if (m2) return m2[1];
+  return null;
+}
+
+/**
+ * Extrae la zona desde el título del aviso.
+ * Ej: "Aviso amarillo de lluvia para Norte de Tenerife" → "Norte de Tenerife"
+ */
+function _extraerZona(titulo) {
+  const m = titulo.match(/\bpara\s+(.+)/i);
+  return m ? m[1].trim() : null;
+}
+
+/** Devuelve la fecha 'YYYY-MM-DD' de una Date en la zona horaria indicada. */
+function _diaTZ(date, tz) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(date);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    return `${p.year}-${p.month}-${p.day}`;
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
 }
 
 window.aemet = { cargar };
