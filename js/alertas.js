@@ -165,17 +165,14 @@ async function lanzarConProgreso() {
   );
 
   const incidencias = estadoActivo.size;
-  const hayErrores  = [...progEstado.values()].some(e => e === 'error');
 
-  if (!hayErrores) {
-    await delay(1600);
-    renderPanel();
-    if (resultadosParaEstado.length > 0) {
-      mostrarEstadoGenerando();
-      const texto = await pedirEstadoTexto(resultadosParaEstado);
-      if (texto) await mostrarEstadoTexto(texto);
-      else ocultarEstadoPanel();
-    }
+  await delay(1600);
+  renderPanel();
+  if (resultadosParaEstado.length > 0) {
+    mostrarEstadoGenerando();
+    const texto = await pedirEstadoTexto(resultadosParaEstado);
+    if (texto) await mostrarEstadoTexto(texto);
+    else ocultarEstadoPanel();
   }
 
   return incidencias;
@@ -308,7 +305,7 @@ function cabecerHTML(completadas, done, total) {
   return `
     <div id="ia-cabecera" class="px-4 py-3 border-b border-[#e8e6dc] bg-[#f5f3ee] flex items-center gap-2">
       ${spinnerOrCheck}
-      <span class="font-semibold text-sm text-[#141413]">Gemini 2.0 Flash</span>
+      <span class="font-semibold text-sm text-[#141413]">Tráfico Tenerife IA by Gemini</span>
       ${subtitulo}
       <span id="ia-counter" class="ml-auto text-xs font-mono text-[#6b6860]">${completadas}/${total}</span>
     </div>`;
