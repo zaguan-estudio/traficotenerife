@@ -2,18 +2,19 @@
  * Avisos meteorológicos — AEMET (RSS/CAP + caché localStorage diaria)
  * Fuente: RSS público de avisos para Tenerife (zona AFAP6596)
  *
- * Muestra avisos de lluvia publicados hoy o ayer (hora canaria).
- * Sin proxy, sin API key. Llamada directa al RSS de AEMET.
+ * Estrategia de fetch (AEMET no envía CORS headers):
+ *   1. Fetch directo al RSS (funciona en entornos sin restricción CORS)
+ *   2. Si falla por CORS → fetch a través del Cloudflare Worker (/aviso-aemet)
  *
  * Estrategia de caché:
  *   - Si localStorage contiene el RSS del día de hoy → se usa directamente
  *     (cero peticiones de red durante el resto del día)
  *   - Si el día ha cambiado o no hay caché → se descarga el RSS y se guarda
- *   - Si la descarga falla (CORS, red) → se usa el último RSS guardado
- *     (los avisos de ayer siguen siendo relevantes con el filtro hoy/ayer)
+ *   - Si ambos fetches fallan → se usa el último RSS guardado
  */
 
 const RSS_URL   = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
+const RSS_PROXY = 'https://traficotenerife.nameless-bush-75c2.workers.dev/aviso-aemet';
 const CACHE_KEY = 'aemet_rss_tenerife';
 const TZ        = 'Atlantic/Canary';
 
@@ -86,18 +87,31 @@ async function _obtenerRss() {
   const cacheXml = _leerCache(hoy);
   if (cacheXml) return cacheXml;
 
-  // 2. Fetch fresco
-  try {
-    const res = await fetch(RSS_URL, { signal: AbortSignal.timeout(10000) });
-    if (res.ok) {
-      const xml = await res.text();
-      _guardarCache(hoy, xml);
-      return xml;
-    }
-  } catch { /* CORS o red — continuar con fallback */ }
+  // 2. Fetch fresco: directo primero, luego proxy worker si CORS falla
+  const xml = await _fetchRss();
+  if (xml) {
+    _guardarCache(hoy, xml);
+    return xml;
+  }
 
-  // 3. Fallback: cualquier caché previa (avisos de ayer siguen filtrándose por fecha)
+  // 3. Fallback: cualquier caché previa
   return _leerCache(null);
+}
+
+/**
+ * Intenta obtener el RSS de AEMET:
+ * 1. Fetch directo (sin proxy) — falla en navegadores por CORS
+ * 2. Fetch vía Worker (proxy CORS)
+ * Devuelve el texto XML o null si ambos fallan.
+ */
+async function _fetchRss() {
+  for (const url of [RSS_URL, RSS_PROXY]) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+      if (res.ok) return await res.text();
+    } catch { /* continuar con siguiente URL */ }
+  }
+  return null;
 }
 
 /** Lee el XML guardado. Si fecha !== null exige que coincida con esa fecha. */

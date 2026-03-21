@@ -6,6 +6,7 @@
  *   POST /analizar          → analiza una cámara con Gemini 2.0 Flash
  *     Body:     { "camId": "2701002-516" }
  *     Response: { "estado": "normal|denso|colapso", "descripcion": "…" }
+ *   GET  /aviso-aemet       → proxy RSS CAP de avisos AEMET (CORS fix)
  *
  * ── Despliegue ────────────────────────────────────────────────────────────
  *   1. Instala Wrangler:  npm install -g wrangler
@@ -46,10 +47,50 @@ export default {
       return handleAnalizar(request, env);
     }
 
+    // GET /aviso-aemet — proxy RSS AEMET (sin CORS en origen)
+    if (request.method === 'GET' && url.pathname === '/aviso-aemet') {
+      return handleAvisoAemet();
+    }
+
     // GET /* — proxy de imagen CIC
     return handleProxy(url);
   },
 };
+
+/* ── Proxy RSS AEMET ───────────────────────────────────────── */
+const AEMET_RSS = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
+
+async function handleAvisoAemet() {
+  let resp;
+  try {
+    resp = await fetch(AEMET_RSS, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TraficoTenerife/1.0)',
+        'Referer':    'https://www.aemet.es/',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (e) {
+    return new Response(`Error fetching AEMET: ${e.message}`, {
+      status: 502, headers: CORS_HEADERS,
+    });
+  }
+
+  if (!resp.ok) {
+    return new Response(`AEMET returned ${resp.status}`, {
+      status: resp.status, headers: CORS_HEADERS,
+    });
+  }
+
+  return new Response(resp.body, {
+    status: 200,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type':  'application/xml; charset=utf-8',
+      'Cache-Control': 'max-age=900', // 15 min
+    },
+  });
+}
 
 /* ── Proxy de imagen CIC ───────────────────────────────────── */
 async function handleProxy(url) {
