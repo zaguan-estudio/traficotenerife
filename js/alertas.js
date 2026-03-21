@@ -213,7 +213,7 @@ function mostrarEstadoGenerando() {
       <div class="bg-white border border-[#e8e6dc] rounded-xl overflow-hidden shadow-sm">
         <div class="px-4 py-3 border-b border-[#e8e6dc] bg-[#f5f3ee] flex items-center gap-2">
           <span style="display:inline-block;animation:spin 1s linear infinite" class="text-[#d97757]">⟳</span>
-          <span class="font-semibold text-sm text-[#141413]">Gemini 2.5 Flash</span>
+          <span class="font-semibold text-sm text-[#141413]">Tráfico Tenerife IA</span>
           <span class="text-xs text-[#6b6860]">· Generando resumen del tráfico…</span>
         </div>
         <div class="px-4 py-3">
@@ -234,7 +234,7 @@ async function mostrarEstadoTexto(texto) {
       <div class="bg-white border border-[#e8e6dc] rounded-xl overflow-hidden shadow-sm">
         <div class="px-4 py-2.5 border-b border-[#e8e6dc] bg-[#f5f3ee] flex items-center gap-2">
           <span class="text-[#1D9E75]">✦</span>
-          <span class="font-semibold text-sm text-[#141413]">Gemini 2.5 Flash</span>
+          <span class="font-semibold text-sm text-[#141413]">Tráfico Tenerife IA</span>
           <span class="text-xs text-[#6b6860]">· Estado del tráfico</span>
         </div>
         <div class="px-4 py-3">

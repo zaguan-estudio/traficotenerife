@@ -83,7 +83,7 @@ function renderControls() {
     <button id="btn-auto-refresh" class="${BTN_BASE}">↺ Auto-actualizar</button>
     <button id="btn-refresh-now"  class="${BTN_BASE}">⟳ Actualizar ahora</button>
     <button id="btn-expand-all"   class="${BTN_BASE}">⊟ Colapsar todo</button>
-    <button id="btn-detectar-ia"  class="${BTN_BASE}">🔍 Detectar atascos con IA</button>
+    <button id="btn-detectar-ia"  class="${BTN_BASE}">✦ Estado del tráfico con IA</button>
     <div id="countdown-label" class="ml-auto text-xs text-[#6b6860] flex items-center gap-1.5" style="opacity:0.4">
       Próx. actualización:
       <strong id="countdown-secs">${countdownRemain}</strong>
@@ -547,13 +547,13 @@ async function lanzarDeteccionIA() {
   } catch {
     btn.disabled  = false;
     btn.className = BTN_BASE;
-    btn.innerHTML = '🔍 Detectar atascos con IA';
+    btn.innerHTML = '✦ Estado del tráfico con IA';
   }
 
   setTimeout(() => {
     if (btn) {
       btn.className = BTN_BASE;
-      btn.innerHTML = '🔍 Detectar atascos con IA';
+      btn.innerHTML = '✦ Estado del tráfico con IA';
     }
   }, 5000);
 }
