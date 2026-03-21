@@ -216,14 +216,14 @@ function _htmlAviso(av) {
   const dur   = Math.max(18, Math.round(texto.length * 0.28)) + 's';
 
   return `
-    <div style="display:flex;align-items:center;height:26px;background:${cfg.bg};border-top:1px solid ${cfg.badge}22;overflow:hidden">
+    <div style="display:flex;align-items:center;height:30px;background:${cfg.bg};border-top:1px solid ${cfg.badge}22;overflow:hidden">
       <!-- Badge nivel (fijo a la izquierda) -->
       <div style="flex-shrink:0;display:flex;align-items:center;gap:5px;padding:0 10px;height:100%;background:${cfg.badge};color:#fff;font-size:10px;font-weight:700;letter-spacing:.08em;white-space:nowrap">
         ${icono} ${cfg.label}
       </div>
-      <!-- Texto desfilante -->
-      <div style="flex:1;overflow:hidden;position:relative;height:100%">
-        <span style="position:absolute;top:50%;transform:translateY(-50%);white-space:nowrap;padding-left:100%;animation:aemet-ticker ${dur} linear infinite;font-size:11px;color:${cfg.txt};font-weight:500">
+      <!-- Texto desfilante: flex para centrado vertical, overflow hidden para el ticker -->
+      <div style="flex:1;display:flex;align-items:center;overflow:hidden;height:100%">
+        <span style="display:inline-block;white-space:nowrap;padding-left:100%;animation:aemet-ticker ${dur} linear infinite;font-size:11px;color:${cfg.txt};font-weight:500;line-height:1">
           ${texto}&nbsp;&nbsp;·&nbsp;&nbsp;AEMET · ${av.area || 'Tenerife'}
         </span>
       </div>
