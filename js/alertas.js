@@ -110,6 +110,9 @@ async function lanzarConProgreso() {
   const panel = document.getElementById('alertas-panel');
   if (!panel) return 0;
 
+  // Limpiar panel de estado previo
+  ocultarEstadoPanel();
+
   const cams = getCamsToAnalyze();
 
   // Sin favoritas — mostrar aviso
@@ -127,6 +130,7 @@ async function lanzarConProgreso() {
   const progEstado = new Map(cams.map(c => [c.id, 'pending']));
   const progDesc   = new Map();
   let   completadas = 0;
+  const resultadosParaEstado = [];
 
   panel.style.display = '';
   renderProgreso(panel, cams, progEstado, progDesc, completadas, false);
@@ -147,6 +151,12 @@ async function lanzarConProgreso() {
         progEstado.set(cam.id, res.estado);
         progDesc.set(cam.id, res.descripcion);
         aplicarResultado(cam, res);
+        resultadosParaEstado.push({
+          nombre:      cam.name,
+          road:        cam.road,
+          estado:      res.estado,
+          descripcion: res.descripcion,
+        });
       }
 
       updateFila(cam, progEstado.get(cam.id), progDesc.get(cam.id));
@@ -155,15 +165,117 @@ async function lanzarConProgreso() {
   );
 
   const incidencias = estadoActivo.size;
-  const hayErrores = [...progEstado.values()].some(e => e === 'error');
+  const hayErrores  = [...progEstado.values()].some(e => e === 'error');
 
-  // Si hay errores, mantener el panel de progreso abierto para depurar
   if (!hayErrores) {
     await delay(1600);
     renderPanel();
+    if (resultadosParaEstado.length > 0) {
+      mostrarEstadoGenerando();
+      const texto = await pedirEstadoTexto(resultadosParaEstado);
+      if (texto) await mostrarEstadoTexto(texto);
+      else ocultarEstadoPanel();
+    }
   }
 
   return incidencias;
+}
+
+/* ════════════════════════════════════════════════════════════
+   RESUMEN ESTADO TRÁFICO — LLM
+   ════════════════════════════════════════════════════════════ */
+
+/* ── Solicita al Worker el resumen en lenguaje natural ─────── */
+async function pedirEstadoTexto(resultados) {
+  try {
+    const resp = await fetch(`${WORKER_BASE}/estado-trafico`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ resultados }),
+      signal:  AbortSignal.timeout(25000),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error ?? `HTTP ${resp.status}`);
+    return data.texto ?? '';
+  } catch (e) {
+    console.warn('[alertas] Error estado-trafico:', e.message);
+    return '';
+  }
+}
+
+/* ── Muestra el panel con spinner mientras genera ──────────── */
+function mostrarEstadoGenerando() {
+  const panel = document.getElementById('estado-trafico-panel');
+  if (!panel) return;
+  panel.style.display = '';
+  panel.innerHTML = `
+    <div class="max-w-[1600px] mx-auto px-3 py-3">
+      <div class="bg-white border border-[#e8e6dc] rounded-xl overflow-hidden shadow-sm">
+        <div class="px-4 py-3 border-b border-[#e8e6dc] bg-[#f5f3ee] flex items-center gap-2">
+          <span style="display:inline-block;animation:spin 1s linear infinite" class="text-[#d97757]">⟳</span>
+          <span class="font-semibold text-sm text-[#141413]">Gemini 2.5 Flash</span>
+          <span class="text-xs text-[#6b6860]">· Generando resumen del tráfico…</span>
+        </div>
+        <div class="px-4 py-3">
+          <p class="text-xs text-[#b0aea5] italic">¿Cómo está el tráfico en mis cámaras favoritas?</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ── Anima el texto con efecto typewriter ──────────────────── */
+async function mostrarEstadoTexto(texto) {
+  const panel = document.getElementById('estado-trafico-panel');
+  if (!panel) return;
+
+  panel.style.display = '';
+  panel.innerHTML = `
+    <div class="max-w-[1600px] mx-auto px-3 py-3">
+      <div class="bg-white border border-[#e8e6dc] rounded-xl overflow-hidden shadow-sm">
+        <div class="px-4 py-2.5 border-b border-[#e8e6dc] bg-[#f5f3ee] flex items-center gap-2">
+          <span class="text-[#1D9E75]">✦</span>
+          <span class="font-semibold text-sm text-[#141413]">Gemini 2.5 Flash</span>
+          <span class="text-xs text-[#6b6860]">· Estado del tráfico</span>
+        </div>
+        <div class="px-4 py-3">
+          <p class="text-[10px] text-[#b0aea5] mb-1.5 italic">¿Cómo está el tráfico en mis cámaras favoritas?</p>
+          <p id="estado-texto" class="text-sm text-[#141413] leading-relaxed"></p>
+        </div>
+      </div>
+    </div>`;
+
+  const el = document.getElementById('estado-texto');
+  if (!el) return;
+
+  // Cursor parpadeante durante la escritura
+  el.innerHTML = '<span id="cursor-ia" style="display:inline-block;width:2px;height:1em;background:#d97757;vertical-align:text-bottom;animation:blink-cursor 0.7s step-end infinite;margin-left:1px"></span>';
+
+  // Animación CSS para el cursor
+  if (!document.getElementById('cursor-ia-style')) {
+    const style = document.createElement('style');
+    style.id = 'cursor-ia-style';
+    style.textContent = '@keyframes blink-cursor{0%,100%{opacity:1}50%{opacity:0}}';
+    document.head.appendChild(style);
+  }
+
+  let content = '';
+  const cursor = document.getElementById('cursor-ia');
+
+  for (let i = 0; i < texto.length; i++) {
+    content += texto[i];
+    if (cursor) cursor.before(document.createTextNode(texto[i]));
+    else el.textContent = content;
+    await delay(14);
+  }
+
+  // Eliminar cursor al finalizar
+  if (cursor) cursor.remove();
+}
+
+/* ── Oculta el panel si no hay texto ──────────────────────── */
+function ocultarEstadoPanel() {
+  const panel = document.getElementById('estado-trafico-panel');
+  if (panel) { panel.style.display = 'none'; panel.innerHTML = ''; }
 }
 
 /* ── Render inicial del panel de progreso ──────────────────── */

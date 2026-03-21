@@ -47,6 +47,11 @@ export default {
       return handleAnalizar(request, env);
     }
 
+    // POST /estado-trafico — resumen en lenguaje natural del estado del tráfico
+    if (request.method === 'POST' && url.pathname === '/estado-trafico') {
+      return handleEstadoTrafico(request, env);
+    }
+
     // GET /aviso-aemet — proxy RSS AEMET (sin CORS en origen)
     if (request.method === 'GET' && url.pathname === '/aviso-aemet') {
       return handleAvisoAemet();
@@ -254,6 +259,64 @@ async function handleAnalizar(request, env) {
       throw new Error(`estado desconocido: ${parsed.estado}`);
     }
     return jsonResp(parsed);
+
+  } catch (e) {
+    return jsonResp({ error: `Error Gemini: ${e.message}` }, 502);
+  }
+}
+
+/* ── Resumen en lenguaje natural del estado del tráfico ────── */
+async function handleEstadoTrafico(request, env) {
+  const apiKey = env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return jsonResp({ error: 'GEMINI_API_KEY no configurado' }, 500);
+  }
+
+  let body;
+  try { body = await request.json(); }
+  catch { return jsonResp({ error: 'Body JSON inválido' }, 400); }
+
+  const { resultados } = body;
+  if (!Array.isArray(resultados) || resultados.length === 0) {
+    return jsonResp({ error: 'resultados inválidos o vacíos' }, 400);
+  }
+
+  const resumen = resultados
+    .map(r => `- ${r.nombre} (${r.road}): ${r.estado}${r.descripcion ? ` — ${r.descripcion}` : ''}`)
+    .join('\n');
+
+  const prompt = `Eres un asistente de información de tráfico para Tenerife. El usuario quiere saber cómo está el tráfico en sus cámaras favoritas.
+
+Datos analizados en este momento:
+${resumen}
+
+Responde en español a la pregunta "¿cómo está el tráfico en mis cámaras favoritas?" de forma natural y conversacional. Máximo 3-4 frases seguidas, sin listas ni markdown. Si todo fluye con normalidad, tranquiliza al usuario. Si hay incidencias (denso o colapso), menciónalas con claridad indicando la carretera o zona. Sé directo y útil.`;
+
+  try {
+    const geminiResp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
+        }),
+        signal: AbortSignal.timeout(20000),
+      }
+    );
+
+    if (!geminiResp.ok) {
+      const err = await geminiResp.json().catch(() => ({}));
+      return jsonResp(
+        { error: `Gemini ${geminiResp.status}: ${err?.error?.message ?? geminiResp.statusText}` },
+        502
+      );
+    }
+
+    const data  = await geminiResp.json();
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    return jsonResp({ texto: texto.trim() });
 
   } catch (e) {
     return jsonResp({ error: `Error Gemini: ${e.message}` }, 502);
