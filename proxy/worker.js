@@ -182,7 +182,7 @@ async function handleAnalizar(request, env) {
               { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
             ],
           }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 300 },
+          generationConfig: { temperature: 0.1, maxOutputTokens: 700 },
         }),
         signal: AbortSignal.timeout(25000),
       }
