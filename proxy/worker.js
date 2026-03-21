@@ -300,7 +300,7 @@ Responde en español a la pregunta "¿cómo está el tráfico en mis cámaras fa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, maxOutputTokens: 300 },
+          generationConfig: { temperature: 0.7, maxOutputTokens: 600 },
         }),
         signal: AbortSignal.timeout(20000),
       }
