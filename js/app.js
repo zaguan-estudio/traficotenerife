@@ -210,10 +210,22 @@ function _htmlAviso(av) {
   const ev    = (av.event || '').toLowerCase();
   const icono = Object.entries(ICONOS).find(([k]) => ev.includes(k))?.[1] ?? '⚠️';
 
+  const fmt = iso => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString('es-ES', {
+        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+        timeZone: 'Atlantic/Canary',
+      });
+    } catch { return ''; }
+  };
+
   // Texto que desfila: headline o evento + zona
-  const texto = av.headline || `${av.event || 'Aviso'} — ${av.area || 'Tenerife'}`;
+  const texto  = av.headline || `${av.event || 'Aviso'} — ${av.area || 'Tenerife'}`;
+  const fechaH = fmt(av.onset) || fmt(av.expires);
+  const sufijo = fechaH ? `&nbsp;&nbsp;·&nbsp;&nbsp;${fechaH}` : '';
   // Duración proporcional al texto (~6px/char, mín 18s)
-  const dur   = Math.max(18, Math.round(texto.length * 0.28)) + 's';
+  const dur    = Math.max(18, Math.round((texto.length + (fechaH ? fechaH.length : 0)) * 0.28)) + 's';
 
   return `
     <div style="display:flex;align-items:center;height:30px;background:${cfg.bg};border-top:1px solid ${cfg.badge}22;overflow:hidden">
@@ -224,7 +236,7 @@ function _htmlAviso(av) {
       <!-- Texto desfilante: flex para centrado vertical, overflow hidden para el ticker -->
       <div style="flex:1;display:flex;align-items:center;overflow:hidden;height:100%">
         <span style="display:inline-block;white-space:nowrap;padding-left:100%;animation:aemet-ticker ${dur} linear infinite;font-size:11px;color:${cfg.txt};font-weight:500;line-height:1">
-          ${texto}&nbsp;&nbsp;·&nbsp;&nbsp;AEMET · ${av.area || 'Tenerife'}
+          ${texto}&nbsp;&nbsp;·&nbsp;&nbsp;AEMET · ${av.area || 'Tenerife'}${sufijo}
         </span>
       </div>
     </div>`;
