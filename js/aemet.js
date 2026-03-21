@@ -13,9 +13,10 @@
  *   - Si ambos fetches fallan → se usa el último RSS guardado
  */
 
-const RSS_URL   = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
-const RSS_PROXY = 'https://traficotenerife.nameless-bush-75c2.workers.dev/aviso-aemet';
-const CACHE_KEY = 'aemet_rss_tenerife';
+const RSS_URL    = 'https://www.aemet.es/documentos_d/eltiempo/prediccion/avisos/rss/CAP_AFAP6596_RSS.xml';
+const RSS_PROXY  = 'https://traficotenerife.nameless-bush-75c2.workers.dev/aviso-aemet';
+const CAP_PROXY  = 'https://traficotenerife.nameless-bush-75c2.workers.dev/proxy';
+const CACHE_KEY  = 'aemet_rss_tenerife';
 const TZ        = 'Atlantic/Canary';
 
 /** Palabras clave de eventos de lluvia */
@@ -49,7 +50,8 @@ async function cargar() {
     // Enriquecer con onset/expires desde el CAP XML individual (opcional)
     if (mejor.capUrl) {
       try {
-        const capRes = await fetch(mejor.capUrl, { signal: AbortSignal.timeout(8000) });
+        const proxyUrl = `${CAP_PROXY}?url=${encodeURIComponent(mejor.capUrl)}`;
+        const capRes = await fetch(proxyUrl, { signal: AbortSignal.timeout(8000) });
         if (capRes.ok) {
           const detalles = _parseCapXml(await capRes.text());
           const match = detalles.find(d =>

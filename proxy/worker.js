@@ -52,6 +52,11 @@ export default {
       return handleAvisoAemet();
     }
 
+    // GET /proxy?url= — proxy genérico AEMET (solo dominio aemet.es)
+    if (request.method === 'GET' && url.pathname === '/proxy') {
+      return handleProxyAemet(url);
+    }
+
     // GET /* — proxy de imagen CIC
     return handleProxy(url);
   },
@@ -88,6 +93,48 @@ async function handleAvisoAemet() {
       ...CORS_HEADERS,
       'Content-Type':  'application/xml; charset=utf-8',
       'Cache-Control': 'max-age=900', // 15 min
+    },
+  });
+}
+
+/* ── Proxy genérico AEMET (/proxy?url=) ───────────────────── */
+async function handleProxyAemet(url) {
+  const target = url.searchParams.get('url');
+  if (!target) {
+    return new Response('Falta parámetro url', { status: 400, headers: CORS_HEADERS });
+  }
+  // Seguridad: solo se permite el dominio aemet.es
+  let parsed;
+  try { parsed = new URL(target); } catch {
+    return new Response('URL inválida', { status: 400, headers: CORS_HEADERS });
+  }
+  if (!parsed.hostname.endsWith('aemet.es')) {
+    return new Response('Dominio no permitido', { status: 403, headers: CORS_HEADERS });
+  }
+
+  let resp;
+  try {
+    resp = await fetch(target, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; TraficoTenerife/1.0)',
+        'Referer':    'https://www.aemet.es/',
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (e) {
+    return new Response(`Error: ${e.message}`, { status: 502, headers: CORS_HEADERS });
+  }
+
+  if (!resp.ok) {
+    return new Response(`AEMET returned ${resp.status}`, { status: resp.status, headers: CORS_HEADERS });
+  }
+
+  return new Response(resp.body, {
+    status: 200,
+    headers: {
+      ...CORS_HEADERS,
+      'Content-Type':  'application/xml; charset=utf-8',
+      'Cache-Control': 'max-age=1800',
     },
   });
 }
