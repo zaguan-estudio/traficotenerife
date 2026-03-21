@@ -21,6 +21,12 @@
 
   <!-- Tailwind CSS (compilado por Vite) -->
   <link rel="stylesheet" href="css/style.css" />
+  <style>
+    @keyframes aemet-ticker {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-100%); }
+    }
+  </style>
 </head>
 
 <body class="bg-[#faf9f5] text-[#141413] min-h-screen font-sans leading-relaxed">
@@ -90,6 +96,7 @@
       <li><a href="#sec-tun-guincho" class="nav-link flex items-center gap-1.5 px-3.5 py-2.5 text-[#6b6860] no-underline text-xs font-semibold tracking-wide uppercase whitespace-nowrap border-b-2 border-transparent transition-all duration-200 hover:text-[#d97757] hover:border-[#d97757]">Guincho <span class="bg-[#e8e6dc] text-[#6b6860] text-[10px] px-1.5 rounded-full font-normal" id="badge-tun-guincho"></span></a></li>
     </ul>
     </div>
+    <div id="aviso-aemet"></div>
   </nav>
 
   <!-- ═══════ ALERTAS IA ═══════ -->
