@@ -236,6 +236,7 @@ async function mostrarEstadoTexto(texto) {
           <span class="text-[#1D9E75]">✦</span>
           <span class="font-semibold text-sm text-[#141413]">Tráfico Tenerife IA</span>
           <span class="text-xs text-[#6b6860]">· Estado del tráfico</span>
+          <button id="btn-cerrar-estado" class="ml-auto text-[#b0aea5] hover:text-[#141413] transition-colors leading-none bg-transparent border-0 cursor-pointer text-base px-1" aria-label="Cerrar">✕</button>
         </div>
         <div class="px-4 py-3">
           <p class="text-[10px] text-[#b0aea5] mb-1.5 italic">¿Cómo está el tráfico en mis cámaras favoritas?</p>
@@ -243,6 +244,8 @@ async function mostrarEstadoTexto(texto) {
         </div>
       </div>
     </div>`;
+
+  document.getElementById('btn-cerrar-estado')?.addEventListener('click', ocultarEstadoPanel);
 
   const el = document.getElementById('estado-texto');
   if (!el) return;
