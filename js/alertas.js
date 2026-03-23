@@ -382,11 +382,7 @@ function renderPanel() {
     (a.estado === 'colapso' ? 0 : 1) - (b.estado === 'colapso' ? 0 : 1)
   );
 
-  panel.style.display = '';
-  panel.innerHTML = `
-    <div class="max-w-[1600px] mx-auto px-3 py-2.5 flex flex-wrap gap-2">
-      ${items.map(tarjetaHTML).join('')}
-    </div>`;
+  panel.style.display = 'none';
 
   actualizarOverlaysCamaras();
 }
